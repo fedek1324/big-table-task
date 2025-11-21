@@ -1,0 +1,47 @@
+{
+    "git.autofetch": true,
+    "typescript.preferences.importModuleSpecifier": "non-relative",
+    "[html]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "diffEditor.ignoreTrimWhitespace": true,
+    "git.suggestSmartCommit": false,
+    "files.insertFinalNewline": true,
+    "editor.bracketPairColorization.enabled": true,
+    "javascript.format.insertSpaceAfterOpeningAndBeforeClosingJsxExpressionBraces": true,
+    "javascript.format.insertSpaceAfterOpeningAndBeforeClosingTemplateStringBraces": false,
+    "typescript.format.insertSpaceAfterOpeningAndBeforeClosingJsxExpressionBraces": true,
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "files.trimTrailingWhitespace": true,
+    "javascript.preferences.importModuleSpecifier": "relative",
+    "editor.formatOnSave": true,
+    "prettier.tabWidth": 4,
+    "prettier.useTabs": false,
+    "prettier.endOfLine": "lf",
+    "prettier.bracketSameLine": false,
+    "prettier.jsxSingleQuote": true,
+    "prettier.printWidth": 140,
+    "prettier.singleQuote": true,
+    "javascript.format.insertSpaceAfterOpeningAndBeforeClosingNonemptyBrackets": true,
+    "javascript.format.insertSpaceAfterOpeningAndBeforeClosingNonemptyParenthesis": true,
+    "javascript.format.semicolons": "insert",
+    "html.format.wrapAttributes": "force-expand-multiline",
+    "html.format.wrapAttributesIndentSize": 4,
+    "javascript.format.insertSpaceAfterConstructor": true,
+    "typescript.format.insertSpaceAfterTypeAssertion": true,
+    "typescript.format.semicolons": "insert",
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnPaste": false,
+
+    "cSpell.language": "en,ru",
+    "[scss]": {
+        "editor.defaultFormatter": "vscode.css-language-features"
+    },
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "eslint.useFlatConfig": true
+}
