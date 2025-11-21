@@ -20,7 +20,14 @@ export function StatsGrid() {
     }, [metric]);
 
     useEffect(() => {
-        STATS_API.getFull().then((data) => setRowData(data));
+        STATS_API.getFull().then((data) => {
+            console.log('getFull Data ', data);
+            // Перед артиклем почему то идут пробелы с бэка
+            data.forEach((item) => {
+                item.article = item.article.trim();
+            });
+            setRowData(data);
+        });
     }, []);
 
     return (
