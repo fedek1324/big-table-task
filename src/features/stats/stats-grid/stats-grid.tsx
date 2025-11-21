@@ -16,6 +16,7 @@ export function StatsGrid() {
     const metric = searchParams.get('metric') ?? Metrics.cost;
     const workerRef = useRef<Worker | null>(null);
     const isAggregatedRef = useRef<boolean>(false); // Флаг: данные уже агрегированы
+    const aggregateRequestIdRef = useRef<number>(0); // ID текущего запроса для отслеживания актуальности
 
     // Алгоритм
     // 1. Загружаем данные через getFull и сразу отображаем
@@ -38,8 +39,15 @@ export function StatsGrid() {
         workerRef.current = new AggregateWorker();
 
         workerRef.current.onmessage = (e: MessageEvent) => {
-            const { data } = e;
-            console.log('worker.onmessage received:', data);
+            const { data, requestId } = e.data;
+            console.log('worker.onmessage received, requestId:', requestId);
+
+            // Игнорируем устаревшие ответы
+            if (requestId !== aggregateRequestIdRef.current) {
+                console.log('Ignoring outdated response, expected:', aggregateRequestIdRef.current);
+                return;
+            }
+
             console.log('Aggregation finished, updating rowData');
             isAggregatedRef.current = true; // Данные теперь агрегированы
             setRowData(data);
@@ -67,9 +75,17 @@ export function StatsGrid() {
     // Отправляем данные в воркер для агрегации при изменении данных или метрики
     useEffect(() => {
         if (rowData && rowData.length > 0 && workerRef.current && !isAggregatedRef.current) {
-            console.log('Sending data to worker for aggregation, metric:', metric);
+            // Увеличиваем ID запроса
+            aggregateRequestIdRef.current += 1;
+            const currentRequestId = aggregateRequestIdRef.current;
+
+            console.log('Sending data to worker for aggregation, metric:', metric, 'requestId:', currentRequestId);
             try {
-                workerRef.current.postMessage({ data: rowData, aggregateType: metric });
+                workerRef.current.postMessage({
+                    data: rowData,
+                    aggregateType: metric,
+                    requestId: currentRequestId,
+                });
             } catch (error) {
                 console.error('Error sending message to worker:', error);
             }

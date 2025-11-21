@@ -4,11 +4,12 @@ import { Metrics } from '../stats.const';
 console.log('worker imported');
 
 onmessage = function (e) {
-    const { data, aggregateType } = e.data;
+    const { data, aggregateType, requestId } = e.data;
 
+    console.log('Worker: Starting aggregation for metric:', aggregateType, 'requestId:', requestId);
     const workerResult = aggregateData(data, aggregateType);
-    console.log(`Posting message to main thread: `, workerResult);
-    postMessage(workerResult);
+    console.log('Worker: Posting message to main thread, requestId:', requestId);
+    postMessage({ data: workerResult, requestId });
 };
 
 // self.addEventListener('message', function (e: MessageEvent) {
