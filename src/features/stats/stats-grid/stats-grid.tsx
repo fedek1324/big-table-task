@@ -37,6 +37,7 @@ export function StatsGrid() {
                 autoGroupColumnDef={{
                     menuTabs: ['columnsMenuTab'],
                     pinned: 'left',
+                    field: 'article', // явно указываем что отображаем артикли
                 }}
                 theme={themeBalham.withParams({
                     backgroundColor: 'var(--bs-body-bg)',
