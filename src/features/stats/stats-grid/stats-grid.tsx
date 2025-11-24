@@ -33,7 +33,7 @@ export function StatsGrid() {
     // Загружаем данные с сервера ОДИН РАЗ
     useEffect(() => {
         STATS_API.getFull().then((data) => {
-            console.log('getFull data, count:', data.length);
+            console.log('getFull data:', data);
             setServerData(data);
         });
     }, []);
@@ -111,16 +111,16 @@ export function StatsGrid() {
                     return;
                 }
 
-                const groupKeys = params.request.groupKeys;
+                const { groupKeys, startRow, endRow } = params.request;
                 const level = groupKeys.length;
 
-                console.log('Requested level:', level, 'groupKeys:', groupKeys);
+                console.log('Requested level:', level, 'groupKeys:', groupKeys, 'startRow:', startRow, 'endRow:', endRow);
 
-                let filteredRows: TreeNode[];
+                let allFilteredRows: TreeNode[];
 
                 if (level === 0) {
                     // Root level - return all top-level nodes (suppliers)
-                    filteredRows = rowData.filter((node) => node.level === 0);
+                    allFilteredRows = rowData.filter((node) => node.level === 0);
                 } else {
                     // Find the parent node based on groupKeys
                     const parentId = groupKeys[groupKeys.length - 1];
@@ -129,16 +129,21 @@ export function StatsGrid() {
                     if (parentNode && parentNode.children.length > 0) {
                         // Return children of this parent
                         const childIds = parentNode.children as string[];
-                        filteredRows = rowData.filter((node) => childIds.includes(node.id));
+                        allFilteredRows = rowData.filter((node) => childIds.includes(node.id));
                     } else {
-                        filteredRows = [];
+                        allFilteredRows = [];
                     }
                 }
 
-                console.log('Returning rows:', filteredRows.length);
+                // Slice the data according to startRow and endRow for pagination
+                const rowsToReturn = allFilteredRows.slice(startRow, endRow);
+                const totalRowCount = allFilteredRows.length;
+
+                console.log('Total rows available:', totalRowCount, 'Returning rows:', rowsToReturn.length, `(${startRow}-${endRow})`);
+
                 params.success({
-                    rowData: filteredRows,
-                    rowCount: filteredRows.length
+                    rowData: rowsToReturn,
+                    rowCount: totalRowCount,
                 });
             },
         };
