@@ -2,7 +2,7 @@ import { AgGridReact } from 'ag-grid-react';
 import { useEffect, useState, useRef } from 'react';
 import { IStatItem } from '../../../types/stats.types';
 import { STATS_API } from '../../../api/stats.api';
-import { ColDef, GridApi, GridReadyEvent, IServerSideDatasource, LoadSuccessParams, themeBalham } from 'ag-grid-enterprise';
+import { ColDef, GridApi, GridReadyEvent, IServerSideDatasource, themeBalham } from 'ag-grid-enterprise';
 // All Enterprise Features
 import { AllEnterpriseModule, ModuleRegistry } from 'ag-grid-enterprise';
 import { useSearchParams } from 'react-router-dom';
@@ -103,28 +103,40 @@ export function StatsGrid() {
     const onGridReady = (event: GridReadyEvent) => {
         const datasource: IServerSideDatasource<any> = {
             getRows(params) {
-                console.log(JSON.stringify(params.request, null, 1));
+                console.log('getRows request:', JSON.stringify(params.request, null, 1));
 
-                const result: LoadSuccessParams<TreeNode> = {
-                    rowData: rowData ?? [],
-                };
+                if (!rowData || rowData.length === 0) {
+                    console.log('No rowData available yet');
+                    params.success({ rowData: [] });
+                    return;
+                }
 
-                console.log(result);
-                params.success(result);
+                const groupKeys = params.request.groupKeys;
+                const level = groupKeys.length;
 
-                // fetch('./olympicWinners/', {
-                //     method: 'post',
-                //     body: JSON.stringify(params.request),
-                //     headers: { 'Content-Type': 'application/json; charset=utf-8' },
-                // })
-                //     .then((httpResponse) => httpResponse.json())
-                //     .then((response) => {
-                //         params.success(response.rows);
-                //     })
-                //     .catch((error) => {
-                //         console.error(error);
-                //         params.fail();
-                //     });
+                console.log('Requested level:', level, 'groupKeys:', groupKeys);
+
+                let filteredRows: TreeNode[];
+
+                if (level === 0) {
+                    // Root level - return all top-level nodes (suppliers)
+                    filteredRows = rowData.filter((node) => node.level === 0);
+                } else {
+                    // Find the parent node based on groupKeys
+                    const parentId = groupKeys[groupKeys.length - 1];
+                    const parentNode = rowData.find((node) => node.id === parentId);
+
+                    if (parentNode && parentNode.children.length > 0) {
+                        // Return children of this parent
+                        const childIds = parentNode.children as string[];
+                        filteredRows = rowData.filter((node) => childIds.includes(node.id));
+                    } else {
+                        filteredRows = [];
+                    }
+                }
+
+                console.log('Returning rows:', filteredRows.length);
+                params.success({ rowData: filteredRows });
             },
         };
 
@@ -138,11 +150,34 @@ export function StatsGrid() {
                 <AgGridReact
                     rowModelType='serverSide'
                     onGridReady={onGridReady}
-                    groupHideParentOfSingleChild='leafGroupsOnly'
+                    treeData={true}
+                    isServerSideGroup={(dataItem: TreeNode) => dataItem.children && dataItem.children.length > 0}
+                    getServerSideGroupKey={(dataItem: TreeNode) => dataItem.id}
                     autoGroupColumnDef={{
+                        headerName: 'Hierarchy',
                         menuTabs: ['columnsMenuTab'],
                         pinned: 'left',
-                        field: 'article', // явно указываем что отображаем артикли
+                        valueGetter: (params) => {
+                            const data = params.data as TreeNode;
+                            if (!data) return '';
+
+                            // Display the appropriate field based on node level
+                            switch (data.level) {
+                                case 0:
+                                    return data.supplier;
+                                case 1:
+                                    return data.brand;
+                                case 2:
+                                    return data.type;
+                                case 3:
+                                    return data.article;
+                                default:
+                                    return '';
+                            }
+                        },
+                        cellRendererParams: {
+                            suppressCount: true,
+                        },
                     }}
                     theme={themeBalham.withParams({
                         backgroundColor: 'var(--bs-body-bg)',
