@@ -136,7 +136,10 @@ export function StatsGrid() {
                 }
 
                 console.log('Returning rows:', filteredRows.length);
-                params.success({ rowData: filteredRows });
+                params.success({
+                    rowData: filteredRows,
+                    rowCount: filteredRows.length
+                });
             },
         };
 
