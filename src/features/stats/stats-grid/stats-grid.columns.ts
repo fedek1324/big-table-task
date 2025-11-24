@@ -1,8 +1,10 @@
 import { ColDef, ColDefField, ValueFormatterParams, ValueGetterParams } from 'ag-grid-enterprise';
 import { IStatItem, ORDERED_LEVELS } from '../../../types/stats.types';
 import { METADATA_LABELS } from '../stats.const';
+import { TreeNodeBase } from '../../../types/tree.types';
 
-export function statsGridColumnsFactory<T extends IStatItem>(metric: string, dates: string[]) {
+// TODO maybe inherit statItem
+export function statsGridColumnsFactory<T extends TreeNodeBase>(dates: string[]) {
     const metadataColumns: ColDef<T>[] = ORDERED_LEVELS.map((level, index) => ({
         colId: level,
         headerName: METADATA_LABELS[level],
@@ -16,7 +18,7 @@ export function statsGridColumnsFactory<T extends IStatItem>(metric: string, dat
         colId: 'sums',
         headerName: 'Sum',
         valueGetter: (params: ValueGetterParams<T>) => {
-            return params.data?.sums?.[metric as keyof typeof params.data.sums] ?? 0;
+            return params.data?.sum ?? 0;
         },
         valueFormatter: (params: ValueFormatterParams<T>) => {
             return params.value?.toLocaleString() ?? '';
@@ -26,7 +28,7 @@ export function statsGridColumnsFactory<T extends IStatItem>(metric: string, dat
         colId: 'average',
         headerName: 'Average',
         valueGetter: (params: ValueGetterParams<T>) => {
-            return params.data?.average?.[metric as keyof typeof params.data.average] ?? 0;
+            return params.data?.average ?? 0;
         },
         valueFormatter: (params: ValueFormatterParams<T>) => {
             return params.value?.toLocaleString() ?? '';
@@ -37,7 +39,7 @@ export function statsGridColumnsFactory<T extends IStatItem>(metric: string, dat
         headerName: date,
         colId: `${index}`,
         valueGetter: (params: ValueGetterParams<T>) => {
-            return params.data?.[metric as 'cost' | 'orders' | 'returns' | 'revenue' | 'buyouts']?.[index] ?? 0;
+            return params.data?.metricData[index] ?? 0;
         },
         valueFormatter: (params: ValueFormatterParams<T>) => {
             return params.value?.toLocaleString() ?? '';
