@@ -5,92 +5,88 @@ import { STATS_API } from '../../../api/stats.api';
 import { ColDef, themeBalham } from 'ag-grid-enterprise';
 import { useSearchParams } from 'react-router-dom';
 import { Metrics } from '../stats.const';
-import { statsGridColumnsFactory } from './stats-grid.columns';
-import AggregateWorker from '../helpers/aggregateDataWorker?worker';
+import BuildTreeWorker from '../helpers/buildTreeWorker?worker';
+import { TreeNode } from '../../../types/tree.types';
 import './stats-grid.scss';
+import { statsGridColumnsFactory } from './stats-grid.columns';
 
 export function StatsGrid() {
-    const [rowData, setRowData] = useState<IStatItem[] | null>(null);
-    const [columnDefs, setColumnDefs] = useState<ColDef<IStatItem>[]>([]);
+    const [serverData, setServerData] = useState<IStatItem[] | null>(null); // Данные с сервера
+    const [rowData, setRowData] = useState<TreeNode[] | null>(null); // Данные для AG-Grid
+    const [columnDefs, setColumnDefs] = useState<ColDef<TreeNode>[]>([]);
     const [searchParams] = useSearchParams();
     const metric = searchParams.get('metric') ?? Metrics.cost;
-    const workerRef = useRef<Worker | null>(null);
-    const isAggregatedRef = useRef<boolean>(false); // Флаг: данные уже агрегированы
-    const aggregateRequestIdRef = useRef<number>(0); // ID текущего запроса для отслеживания актуальности
+    const buildTreeWorkerRef = useRef<Worker | null>(null);
+    const buildTreeRequestIdRef = useRef<number>(0);
 
     // Алгоритм
-    // 1. Загружаем данные через getFull и сразу отображаем
-    // 2. Отправляем данные в воркер для вычисления агрегированных значений для выбранной метрики
-    // 3. Получаем обработанные данные из воркера и обновляем rowData
-    // TODO: Потом в фоне подгружаем данные для других метрик
-    // TODO: Всегда кэшируем через indexDb
+    // 1. Загружаем данные через getFull ОДИН РАЗ и сохраняем в serverData
+    // 2. При смене метрики отправляем serverData в buildTreeWorker
+    // 3. Получаем иерархическое дерево и отображаем в AG-Grid
+    // TODO: Кэшируем через indexDb
 
-    // Загружаем данные с бэкенда
+    // Загружаем данные с сервера ОДИН РАЗ
     useEffect(() => {
         STATS_API.getFull().then((data) => {
-            console.log('getFull data[0] ', data[0]);
-            // Сразу отображаем данные без агрегации
-            isAggregatedRef.current = false; // Данные сырые, не агрегированы
-            setRowData(data);
+            console.log('getFull data, count:', data.length);
+            setServerData(data);
         });
     }, []);
 
+    // Инициализируем buildTreeWorker
     useEffect(() => {
-        workerRef.current = new AggregateWorker();
+        buildTreeWorkerRef.current = new BuildTreeWorker();
 
-        workerRef.current.onmessage = (e: MessageEvent) => {
-            const { data, requestId } = e.data;
-            console.log('worker.onmessage received, requestId:', requestId);
+        buildTreeWorkerRef.current.onmessage = (e: MessageEvent) => {
+            const { treeData, rootNodeIds, requestId } = e.data;
+            console.log('BuildTreeWorker: onmessage, requestId:', requestId);
 
             // Игнорируем устаревшие ответы
-            if (requestId !== aggregateRequestIdRef.current) {
-                console.log('Ignoring outdated response, expected:', aggregateRequestIdRef.current);
+            if (requestId !== buildTreeRequestIdRef.current) {
+                console.log('BuildTreeWorker: Ignoring outdated response, expected:', buildTreeRequestIdRef.current);
                 return;
             }
 
-            console.log('Aggregation finished, updating rowData');
-            isAggregatedRef.current = true; // Данные теперь агрегированы
-            setRowData(data);
+            console.log('BuildTreeWorker: Tree received, nodes count:', Object.keys(treeData).length);
+
+            // Преобразуем object в массив TreeNode
+            const treeArray = Object.values(treeData) as TreeNode[];
+            setRowData(treeArray);
         };
 
-        workerRef.current.onerror = (error: ErrorEvent) => {
-            console.error('Worker error:', error);
+        buildTreeWorkerRef.current.onerror = (error: ErrorEvent) => {
+            console.error('BuildTreeWorker error:', error);
         };
 
         return () => {
-            workerRef.current?.terminate();
+            buildTreeWorkerRef.current?.terminate();
         };
     }, []);
 
+    // Отправляем данные в воркер при изменении serverData или метрики
+    useEffect(() => {
+        if (serverData && serverData.length > 0 && buildTreeWorkerRef.current) {
+            buildTreeRequestIdRef.current += 1;
+            const currentRequestId = buildTreeRequestIdRef.current;
+
+            console.log('Sending data to BuildTreeWorker, metric:', metric, 'requestId:', currentRequestId);
+            try {
+                buildTreeWorkerRef.current.postMessage({
+                    data: serverData,
+                    metric,
+                    requestId: currentRequestId,
+                });
+            } catch (error) {
+                console.error('Error sending message to BuildTreeWorker:', error);
+            }
+        }
+    }, [serverData, metric]);
+
+    // Генерируем колонки для TreeNode
     useEffect(() => {
         const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
         setColumnDefs(statsGridColumnsFactory(metric, dates));
     }, [metric]);
-
-    // Сбрасываем флаг агрегации при смене метрики
-    useEffect(() => {
-        isAggregatedRef.current = false;
-    }, [metric]);
-
-    // Отправляем данные в воркер для агрегации при изменении данных или метрики
-    useEffect(() => {
-        if (rowData && rowData.length > 0 && workerRef.current && !isAggregatedRef.current) {
-            // Увеличиваем ID запроса
-            aggregateRequestIdRef.current += 1;
-            const currentRequestId = aggregateRequestIdRef.current;
-
-            console.log('Sending data to worker for aggregation, metric:', metric, 'requestId:', currentRequestId);
-            try {
-                workerRef.current.postMessage({
-                    data: rowData,
-                    aggregateType: metric,
-                    requestId: currentRequestId,
-                });
-            } catch (error) {
-                console.error('Error sending message to worker:', error);
-            }
-        }
-    }, [rowData, metric]);
 
     return (
         <div className='stats-grid ag-theme-balham'>

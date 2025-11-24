@@ -33,7 +33,7 @@ class ApiWorker {
         }
     }
 
-    private genStatsData(size: number = 1e5) {
+    private genStatsData(size: number = 1e4) {
         const pow = Math.log10(size);
         const items: IStatItem[] = [];
 
