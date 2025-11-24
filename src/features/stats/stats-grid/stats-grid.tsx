@@ -2,13 +2,17 @@ import { AgGridReact } from 'ag-grid-react';
 import { useEffect, useState, useRef } from 'react';
 import { IStatItem } from '../../../types/stats.types';
 import { STATS_API } from '../../../api/stats.api';
-import { ColDef, themeBalham } from 'ag-grid-enterprise';
+import { ColDef, GridApi, GridReadyEvent, IServerSideDatasource, LoadSuccessParams, themeBalham } from 'ag-grid-enterprise';
+// All Enterprise Features
+import { AllEnterpriseModule, ModuleRegistry } from 'ag-grid-enterprise';
 import { useSearchParams } from 'react-router-dom';
 import { Metrics } from '../stats.const';
 import BuildTreeWorker from '../helpers/buildTreeWorker?worker';
 import { TreeNode } from '../../../types/tree.types';
 import './stats-grid.scss';
 import { statsGridColumnsFactory } from './stats-grid.columns';
+
+ModuleRegistry.registerModules([AllEnterpriseModule]);
 
 export function StatsGrid() {
     const [serverData, setServerData] = useState<IStatItem[] | null>(null); // Данные с сервера
@@ -18,6 +22,7 @@ export function StatsGrid() {
     const metric = searchParams.get('metric') ?? Metrics.cost;
     const buildTreeWorkerRef = useRef<Worker | null>(null);
     const buildTreeRequestIdRef = useRef<number>(0);
+    const [gridApi, setGridApi] = useState<GridApi<any>>();
 
     // Алгоритм
     // 1. Загружаем данные через getFull ОДИН РАЗ и сохраняем в serverData
@@ -88,23 +93,65 @@ export function StatsGrid() {
         setColumnDefs(statsGridColumnsFactory(dates));
     }, [metric]);
 
+    // После получения rowData из worker
+    useEffect(() => {
+        if (rowData && gridApi) {
+            gridApi.refreshServerSide({ purge: true });
+        }
+    }, [rowData, gridApi]);
+
+    const onGridReady = (event: GridReadyEvent) => {
+        const datasource: IServerSideDatasource<any> = {
+            getRows(params) {
+                console.log(JSON.stringify(params.request, null, 1));
+
+                const result: LoadSuccessParams<TreeNode> = {
+                    rowData: rowData ?? [],
+                };
+
+                console.log(result);
+                params.success(result);
+
+                // fetch('./olympicWinners/', {
+                //     method: 'post',
+                //     body: JSON.stringify(params.request),
+                //     headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                // })
+                //     .then((httpResponse) => httpResponse.json())
+                //     .then((response) => {
+                //         params.success(response.rows);
+                //     })
+                //     .catch((error) => {
+                //         console.error(error);
+                //         params.fail();
+                //     });
+            },
+        };
+
+        setGridApi(event.api);
+        event.api.setGridOption('serverSideDatasource', datasource);
+    };
+
     return (
         <div className='stats-grid ag-theme-balham'>
-            <AgGridReact
-                groupHideParentOfSingleChild='leafGroupsOnly'
-                autoGroupColumnDef={{
-                    menuTabs: ['columnsMenuTab'],
-                    pinned: 'left',
-                    field: 'article', // явно указываем что отображаем артикли
-                }}
-                theme={themeBalham.withParams({
-                    backgroundColor: 'var(--bs-body-bg)',
-                    foregroundColor: 'var(--bs-body-color)',
-                    browserColorScheme: 'light',
-                })}
-                rowData={rowData}
-                columnDefs={columnDefs}
-            ></AgGridReact>
+            {rowData && (
+                <AgGridReact
+                    rowModelType='serverSide'
+                    onGridReady={onGridReady}
+                    groupHideParentOfSingleChild='leafGroupsOnly'
+                    autoGroupColumnDef={{
+                        menuTabs: ['columnsMenuTab'],
+                        pinned: 'left',
+                        field: 'article', // явно указываем что отображаем артикли
+                    }}
+                    theme={themeBalham.withParams({
+                        backgroundColor: 'var(--bs-body-bg)',
+                        foregroundColor: 'var(--bs-body-color)',
+                        browserColorScheme: 'light',
+                    })}
+                    columnDefs={columnDefs}
+                ></AgGridReact>
+            )}
         </div>
     );
 }
