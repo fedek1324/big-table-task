@@ -310,4 +310,87 @@ describe('StatsGrid', () => {
             { timeout: 5000 },
         );
     });
+
+    it('should correctly calculate revenue sum and average for multiple goods', async () => {
+        // Подготавливаем комплексный тест кейс с множественными товарами и разными стоимостями
+        // revenue = cost * buyouts = cost * (orders - returns)
+        const costData = Array(30)
+            .fill(0)
+            .map((_, i) => 150.5 + i * 0.25); // Цены варьируются от 150.50 до 157.75
+        const ordersData = Array(30)
+            .fill(0)
+            .map((_, i) => 20 + (i % 10)); // Заказы варьируются от 20 до 29
+        const returnsData = Array(30)
+            .fill(0)
+            .map((_, i) => 5 + (i % 8)); // Возвраты варьируются от 5 до 12
+
+        // Ожидаемое значение revenue:
+        // revenue[i] = cost[i] * (orders[i] - returns[i]) for each day
+        // Пример: day 0: 150.50 * (20-5) = 150.50 * 15 = 2257.50
+        //         day 1: 150.75 * (21-6) = 150.75 * 15 = 2261.25
+        //         ...
+        // sum(revenue) для всех 30 дней = 74948.75
+        // average(revenue) 2498.2916666666665
+        const totalSum = 74948.75 * 3;
+        const totalAverage = 2498.2916666666665;
+
+        const testData = [
+            createMockData({
+                supplier: 'Premium Supplier',
+                brand: 'Premium Brand',
+                article: 'PREM-001',
+                cost: costData,
+                orders: ordersData,
+                returns: returnsData,
+            }),
+            createMockData({
+                supplier: 'Premium Supplier',
+                brand: 'Premium Brand',
+                article: 'PREM-002',
+                cost: costData,
+                orders: ordersData,
+                returns: returnsData,
+            }),
+            createMockData({
+                supplier: 'Premium Supplier',
+                brand: 'Premium Brand',
+                article: 'PREM-003',
+                cost: costData,
+                orders: ordersData,
+                returns: returnsData,
+            }),
+        ];
+        (STATS_API.getFull as any).mockResolvedValue(testData);
+
+        const { container } = render(
+            <MemoryRouter initialEntries={['/stats?metric=revenue']}>
+                <StatsGrid />
+            </MemoryRouter>,
+        );
+
+        // Проверяем что таблица отрендерилась с правильными данными
+        await waitFor(
+            () => {
+                const grid = container.querySelector('.ag-root-wrapper');
+                expect(grid?.textContent).toContain('Premium Supplier');
+            },
+            { timeout: 5000 },
+        );
+
+        // // Проверяем что сумма revenue вычислена правильно
+        await waitFor(
+            () => {
+                const sumCells = container.querySelectorAll('[col-id="sums"]');
+                expect(sumCells.length).toBeGreaterThan(0);
+                // sum(revenue) = sum of cost[i] * (orders[i] - returns[i]) for all 30 days = 74948.75
+                expect(formatNumber(sumCells[1].textContent || '0')).toBeCloseTo(totalSum, compareDigitsCount);
+
+                const averageCells = container.querySelectorAll('[col-id="average"]');
+                expect(averageCells.length).toBeGreaterThan(0);
+                // sum(revenue) = sum of cost[i] * (orders[i] - returns[i]) for all 30 days = 74948.75
+                expect(formatNumber(averageCells[1].textContent || '0')).toBeCloseTo(totalAverage, compareDigitsCount);
+            },
+            { timeout: 5000 },
+        );
+    });
 });
