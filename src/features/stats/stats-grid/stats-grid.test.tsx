@@ -247,4 +247,67 @@ describe('StatsGrid', () => {
             { timeout: 5000 },
         );
     });
+
+    it('should correctly handle data with old lastUpdate date', async () => {
+        // Тестируем данные с lastUpdate = 5 дней назад
+        // Данные приходят включая сегодняшний день. Всего получаем 30 данных.
+        // Это значит что cost[0] = 5 дней назад, cost[1] = 6 дней назад и т.д.
+
+        const fiveDaysAgo = new Date();
+        fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+
+        const testData = [
+            createMockData({
+                supplier: 'Old Data Supplier',
+                brand: 'Old Brand',
+                article: 'OLD-001',
+                lastUpdate: fiveDaysAgo.toISOString(),
+                cost: Array(30).fill(100), // Все цены = 100
+                orders: Array(30).fill(10), // Все заказы = 10
+                returns: Array(30).fill(2), // Все возвраты = 2
+            }),
+        ];
+
+        // После фильтрации:
+        // - первые 5 дней, включая сегодня, будут без данных (0-4 дня назад от сегодня)
+        // - следующие 25 дней будут иметь значения (5-29 дней назад)
+        // cost[i] для i=5..29 будет 100
+        // orders[i] для i=5..29 будет 10
+        // returns[i] для i=5..29 будет 2
+        // revenue для дней с данными: 100 * (10 - 2) = 800
+        // Количество дней с данными: 25
+        // sum = 800 * 25 = 20000
+        // average = 20000 / 30 = 666.667
+        const expectedSum = 20000;
+        const expectedAverage = 666.667;
+
+        (STATS_API.getFull as any).mockResolvedValue(testData);
+
+        const { container } = render(
+            <MemoryRouter initialEntries={['/stats?metric=revenue']}>
+                <StatsGrid />
+            </MemoryRouter>,
+        );
+
+        await waitFor(
+            () => {
+                const grid = container.querySelector('.ag-root-wrapper');
+                expect(grid?.textContent).toContain('Old Data Supplier');
+            },
+            { timeout: 5000 },
+        );
+
+        await waitFor(
+            () => {
+                const sumCells = container.querySelectorAll('[col-id="sums"]');
+                expect(sumCells.length).toBeGreaterThan(0);
+                expect(formatNumber(sumCells[1].textContent || '0')).toBeCloseTo(expectedSum, compareDigitsCount);
+
+                const averageCells = container.querySelectorAll('[col-id="average"]');
+                expect(averageCells.length).toBeGreaterThan(0);
+                expect(formatNumber(averageCells[1].textContent || '0')).toBeCloseTo(expectedAverage, compareDigitsCount);
+            },
+            { timeout: 5000 },
+        );
+    });
 });
