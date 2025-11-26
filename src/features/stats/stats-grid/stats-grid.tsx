@@ -2,7 +2,7 @@ import { AgGridReact } from 'ag-grid-react';
 import { useEffect, useState, useRef } from 'react';
 import { IStatItem } from '../../../types/stats.types';
 import { STATS_API } from '../../../api/stats.api';
-import { ColDef, GridApi, GridReadyEvent, IServerSideDatasource, themeBalham } from 'ag-grid-enterprise';
+import { ColDef, GridReadyEvent, IServerSideDatasource, themeBalham } from 'ag-grid-enterprise';
 // TODO Select only needed
 // All Enterprise Features
 import { AllEnterpriseModule, ModuleRegistry } from 'ag-grid-enterprise';
@@ -23,7 +23,6 @@ export function StatsGrid() {
     const metric = searchParams.get('metric') ?? Metrics.cost;
     const buildTreeWorkerRef = useRef<Worker | null>(null);
     const buildTreeRequestIdRef = useRef<number>(0);
-    const [gridApi, setGridApi] = useState<GridApi<any>>();
 
     // Алгоритм
     // 1. Загружаем данные через getFull ОДИН РАЗ и сохраняем в serverData
@@ -44,7 +43,7 @@ export function StatsGrid() {
         buildTreeWorkerRef.current = new BuildTreeWorker();
 
         buildTreeWorkerRef.current.onmessage = (e: MessageEvent) => {
-            const { treeData, rootNodeIds, requestId } = e.data;
+            const { treeData, requestId } = e.data;
             console.log('BuildTreeWorker: onmessage, requestId:', requestId);
 
             // Игнорируем устаревшие ответы
@@ -142,7 +141,6 @@ export function StatsGrid() {
             },
         };
 
-        setGridApi(event.api);
         event.api.setGridOption('serverSideDatasource', datasource);
     };
 
