@@ -10,7 +10,8 @@ export interface TreeNodeBase {
     children: string[];
 
     // Данные по дням для выбранной метрики (агрегированные с детей)
-    metricData: number[];
+    // Может содержать undefined для дней без данных
+    metricData: (number | undefined)[];
 
     // Агрегированные данные для выбранной метрики
     sum: number;

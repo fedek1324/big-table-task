@@ -148,6 +148,7 @@ export function StatsGrid() {
 
     return (
         <div className='stats-grid ag-theme-balham'>
+            <h2>Данные за последние 30 дней</h2>
             {rowData && (
                 <AgGridReact
                     rowModelType='serverSide'

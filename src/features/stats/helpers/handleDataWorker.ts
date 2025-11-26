@@ -2,14 +2,94 @@ import { IStatItem } from '../../../types/stats.types';
 import { TreeNode, SupplierNode, BrandNode, GoodTypeNode, ArticleNode, createNodeId } from '../../../types/tree.types';
 import { Metrics } from '../stats.const';
 
-console.log('buildTreeWorker imported');
+// Тип для данных без lastUpdate после фильтрации
+// Массивы могут содержать undefined для дней, где нет данных
+type FilteredStatItem = {
+    type: string;
+    article: string;
+    brand: string;
+    supplier: string;
+    cost: (number | undefined)[];
+    orders: (number | undefined)[];
+    returns: (number | undefined)[];
+    revenue?: (number | undefined)[];
+    buyouts?: (number | undefined)[];
+    sums?: IStatItem['sums'];
+    average?: IStatItem['average'];
+};
+
+console.log('handleDataWorker imported');
+
+/**
+ * Фильтрует данные, оставляя только последние 30 дней от сегодняшней даты.
+ * Возвращает массивы длиной ровно 30, дополняя undefined с начала если нужно.
+ *
+ * Логика:
+ * - cost[0] соответствует дате lastUpdate
+ * - cost[1] соответствует lastUpdate минус 1 день
+ * - cost[i] соответствует lastUpdate минус i дней
+ *
+ * Если lastUpdate был 2 дня назад (daysDiff = 2):
+ * - Берём элементы с индекса 0 до 28 (28 элементов: от 2 до 29 дней назад)
+ * - Дополняем 2 элемента undefined в начало (для 0 и 1 дня назад)
+ * - Итого: [undefined, undefined, cost[0], cost[1], ..., cost[27]] - всего 30 элементов
+ *
+ * @param items - массив IStatItem с бэкенда
+ * @returns массив FilteredStatItem без поля lastUpdate с массивами длиной 30
+ */
+function filterLast30Days(items: IStatItem[]): FilteredStatItem[] {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Устанавливаем на начало дня
+
+    return items.map((item) => {
+        const lastUpdateDate = new Date(item.lastUpdate);
+        lastUpdateDate.setHours(0, 0, 0, 0);
+
+        // Вычисляем сколько дней прошло с lastUpdate до сегодня
+        const daysDiff = Math.floor((today.getTime() - lastUpdateDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        // Определяем сколько элементов нужно взять из массивов
+        // cost[0] = lastUpdate (это daysDiff дней назад от сегодня)
+        // Хотим взять данные за последние 30 дней включительно
+        const elementsToTake = Math.max(0, 30 - daysDiff);
+
+        // Сколько элементов undefined нужно добавить в начало
+        const undefinedCount = daysDiff;
+
+        // Создаём функцию для формирования массива с undefined в начале
+        const padArray = (arr: number[] | undefined, count: number): (number | undefined)[] => {
+            if (!arr) return new Array(30).fill(undefined);
+            const sliced = arr.slice(0, count);
+            const padding = new Array(Math.min(undefinedCount, 30)).fill(undefined);
+            return [...padding, ...sliced].slice(0, 30);
+        };
+
+        // Обрезаем массивы данных
+        const { lastUpdate, ...itemWithoutLastUpdate } = item;
+
+        return {
+            ...itemWithoutLastUpdate,
+            cost: padArray(item.cost, elementsToTake) as number[],
+            orders: padArray(item.orders, elementsToTake) as number[],
+            returns: padArray(item.returns, elementsToTake) as number[],
+            revenue: padArray(item.revenue, elementsToTake) as number[],
+            buyouts: padArray(item.buyouts, elementsToTake) as number[],
+        };
+    });
+}
 
 onmessage = function (e) {
     const { data, metric, requestId } = e.data;
 
-    console.log('BuildTreeWorker: Starting tree building for metric:', metric, 'requestId:', requestId);
-    const treeMap = buildTreeWithAggregation(data as IStatItem[], metric);
-    console.log('BuildTreeWorker: Tree built, total nodes:', treeMap.size, 'requestId:', requestId);
+    console.log('HandleDataWorker: Starting data processing for metric:', metric, 'requestId:', requestId);
+
+    // Фильтруем данные за последние 30 дней
+    const filteredData = filterLast30Days(data as IStatItem[]);
+    console.log('HandleDataWorker: Data filtered for last 30 days, items count:', filteredData.length, 'requestId:', requestId);
+
+    // Строим дерево с агрегацией
+    const treeMap = buildTreeWithAggregation(filteredData, metric);
+    console.log('HandleDataWorker: Tree built, total nodes:', treeMap.size, 'requestId:', requestId);
 
     // Преобразуем Map в объект для передачи через postMessage
     const treeObject = Object.fromEntries(treeMap);
@@ -30,10 +110,10 @@ onmessage = function (e) {
  * - metricData: значения метрики по дням
  * - sum и average: агрегированные значения
  *
- * @param items - плоский массив IStatItem с бэкенда
+ * @param items - плоский массив IStatItem или FilteredStatItem
  * @param metric - метрика для агрегации
  */
-function buildTreeWithAggregation(items: IStatItem[], metric: string): Map<string, TreeNode> {
+function buildTreeWithAggregation(items: FilteredStatItem[], metric: string): Map<string, TreeNode> {
     const nodesMap = new Map<string, TreeNode>();
     const daysCount = items[0]?.cost.length || 30;
 
@@ -42,7 +122,7 @@ function buildTreeWithAggregation(items: IStatItem[], metric: string): Map<strin
     const aggregationMap = new Map<
         string,
         {
-            metricData: number[];
+            metricData: (number | undefined)[];
             count: number;
         }
     >();
@@ -51,7 +131,7 @@ function buildTreeWithAggregation(items: IStatItem[], metric: string): Map<strin
     const initAggregation = (id: string) => {
         if (!aggregationMap.has(id)) {
             aggregationMap.set(id, {
-                metricData: new Array(daysCount).fill(0),
+                metricData: new Array(daysCount).fill(undefined),
                 count: 0,
             });
         }
@@ -76,7 +156,7 @@ function buildTreeWithAggregation(items: IStatItem[], metric: string): Map<strin
 
         // Получаем данные для метрики
         const metricData = getMetricData(item, metric);
-        const sum = metricData.reduce((acc, val) => acc + val, 0);
+        const sum = metricData.reduce((acc, val) => (acc ?? 0) + (val ?? 0), 0) ?? 0;
 
         // Создаем узел артикула
         const articleNode: ArticleNode = {
@@ -100,7 +180,10 @@ function buildTreeWithAggregation(items: IStatItem[], metric: string): Map<strin
         [typeId, brandId, supplierId].forEach((parentId) => {
             const agg = aggregationMap.get(parentId)!;
             for (let i = 0; i < daysCount; i++) {
-                agg.metricData[i] += metricData[i];
+                const currentVal = metricData[i];
+                if (currentVal !== undefined) {
+                    agg.metricData[i] = (agg.metricData[i] ?? 0) + currentVal;
+                }
             }
             agg.count++;
         });
@@ -119,7 +202,7 @@ function buildTreeWithAggregation(items: IStatItem[], metric: string): Map<strin
             const type = parts[3];
 
             const agg = aggregationMap.get(nodeId)!;
-            const sum = agg.metricData.reduce((acc, val) => acc + val, 0);
+            const sum = agg.metricData.reduce((acc, val) => (acc ?? 0) + (val ?? 0), 0) ?? 0;
 
             const typeNode: GoodTypeNode = {
                 id: nodeId,
@@ -144,7 +227,7 @@ function buildTreeWithAggregation(items: IStatItem[], metric: string): Map<strin
             const brand = parts[2];
 
             const agg = aggregationMap.get(nodeId)!;
-            const sum = agg.metricData.reduce((acc, val) => acc + val, 0);
+            const sum = agg.metricData.reduce((acc, val) => (acc ?? 0) + (val ?? 0), 0) ?? 0;
 
             const brandNode: BrandNode = {
                 id: nodeId,
@@ -166,7 +249,7 @@ function buildTreeWithAggregation(items: IStatItem[], metric: string): Map<strin
             const supplier = nodeId.split(':')[1];
 
             const agg = aggregationMap.get(nodeId)!;
-            const sum = agg.metricData.reduce((acc, val) => acc + val, 0);
+            const sum = agg.metricData.reduce((acc, val) => (acc ?? 0) + (val ?? 0), 0) ?? 0;
 
             const supplierNode: SupplierNode = {
                 id: nodeId,
@@ -185,9 +268,10 @@ function buildTreeWithAggregation(items: IStatItem[], metric: string): Map<strin
 }
 
 /**
- * Извлекает данные по дням для конкретной метрики из IStatItem
+ * Извлекает данные по дням для конкретной метрики из FilteredStatItem
+ * Сохраняет undefined для дней без данных
  */
-function getMetricData(item: IStatItem, metric: string): number[] {
+function getMetricData(item: FilteredStatItem, metric: string): (number | undefined)[] {
     switch (metric) {
         case Metrics.cost:
             return item.cost;
@@ -196,10 +280,16 @@ function getMetricData(item: IStatItem, metric: string): number[] {
         case Metrics.returns:
             return item.returns;
         case Metrics.buyouts:
-            return item.orders.map((order, idx) => order - item.returns[idx]);
+            return item.orders.map((order, idx) => {
+                if (order === undefined || item.returns[idx] === undefined) return undefined;
+                return order - item.returns[idx];
+            });
         case Metrics.revenue:
-            const buyouts = item.orders.map((order, idx) => order - item.returns[idx]);
-            return item.cost.map((cost, idx) => cost * buyouts[idx]);
+            return item.orders.map((order, idx) => {
+                if (order === undefined || item.returns[idx] === undefined || item.cost[idx] === undefined) return undefined;
+                const buyout = order - item.returns[idx];
+                return item.cost[idx] * buyout;
+            });
         default:
             return item.cost;
     }

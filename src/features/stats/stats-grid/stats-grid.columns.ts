@@ -1,5 +1,5 @@
 import { ColDef, ColDefField, ValueFormatterParams, ValueGetterParams } from 'ag-grid-enterprise';
-import { IStatItem, ORDERED_LEVELS } from '../../../types/stats.types';
+import { ORDERED_LEVELS } from '../../../types/stats.types';
 import { METADATA_LABELS } from '../stats.const';
 import { TreeNodeBase } from '../../../types/tree.types';
 
@@ -39,10 +39,14 @@ export function statsGridColumnsFactory<T extends TreeNodeBase>(dates: string[])
         headerName: date,
         colId: `${index}`,
         valueGetter: (params: ValueGetterParams<T>) => {
-            return params.data?.metricData[index] ?? 0;
+            const value = params.data?.metricData[index];
+            return value !== undefined ? value : null;
         },
         valueFormatter: (params: ValueFormatterParams<T>) => {
-            return params.value?.toLocaleString() ?? '';
+            if (params.value === null || params.value === undefined) {
+                return 'нет данных';
+            }
+            return params.value.toLocaleString();
         },
     }));
 
