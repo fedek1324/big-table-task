@@ -8,7 +8,7 @@ import { ColDef, GridReadyEvent, IServerSideDatasource, themeBalham } from 'ag-g
 import { AllEnterpriseModule, ModuleRegistry } from 'ag-grid-enterprise';
 import { useSearchParams } from 'react-router-dom';
 import { Metrics } from '../stats.const';
-import BuildTreeWorker from '../helpers/buildTreeWorker?worker';
+import HandleDataWorker from '../helpers/handleDataWorker?worker';
 import { TreeNode } from '../../../types/tree.types';
 import './stats-grid.scss';
 import { statsGridColumnsFactory } from './stats-grid.columns';
@@ -21,13 +21,15 @@ export function StatsGrid() {
     const [columnDefs, setColumnDefs] = useState<ColDef<TreeNode>[]>([]);
     const [searchParams] = useSearchParams();
     const metric = searchParams.get('metric') ?? Metrics.cost;
-    const buildTreeWorkerRef = useRef<Worker | null>(null);
-    const buildTreeRequestIdRef = useRef<number>(0);
+    const handleDataWorkerRef = useRef<Worker | null>(null);
+    const handleDataRequestIdRef = useRef<number>(0);
 
     // Алгоритм
     // 1. Загружаем данные через getFull ОДИН РАЗ и сохраняем в serverData
-    // 2. При смене метрики отправляем serverData в buildTreeWorker
-    // 3. Получаем иерархическое дерево и отображаем в AG-Grid
+    // 2. Эти данные отправляем в worker для агрегации по данной метрике
+    //    В результате получаем массив данных TreeNode[].
+    // 3. Отображаем TreeNode[] отображаем в AG-Grid с использованием SSRM для
+    //    динамической отправки нужных данных в таблицу.
     // TODO: Кэшируем через indexDb
 
     // Загружаем данные с сервера ОДИН РАЗ
@@ -38,51 +40,51 @@ export function StatsGrid() {
         });
     }, []);
 
-    // Инициализируем buildTreeWorker
+    // Инициализируем handleDataWorker
     useEffect(() => {
-        buildTreeWorkerRef.current = new BuildTreeWorker();
+        handleDataWorkerRef.current = new HandleDataWorker();
 
-        buildTreeWorkerRef.current.onmessage = (e: MessageEvent) => {
+        handleDataWorkerRef.current.onmessage = (e: MessageEvent) => {
             const { treeData, requestId } = e.data;
-            console.log('BuildTreeWorker: onmessage, requestId:', requestId);
+            console.log('HandleDataWorker: onmessage, requestId:', requestId);
 
             // Игнорируем устаревшие ответы
-            if (requestId !== buildTreeRequestIdRef.current) {
-                console.log('BuildTreeWorker: Ignoring outdated response, expected:', buildTreeRequestIdRef.current);
+            if (requestId !== handleDataRequestIdRef.current) {
+                console.log('HandleDataWorker: Ignoring outdated response, expected:', handleDataRequestIdRef.current);
                 return;
             }
 
-            console.log('BuildTreeWorker: Tree received, nodes count:', Object.keys(treeData).length);
+            console.log('HandleDataWorker: Tree received, nodes count:', Object.keys(treeData).length);
 
             // Преобразуем object в массив TreeNode
             const treeArray = Object.values(treeData) as TreeNode[];
             setRowData(treeArray);
         };
 
-        buildTreeWorkerRef.current.onerror = (error: ErrorEvent) => {
-            console.error('BuildTreeWorker error:', error);
+        handleDataWorkerRef.current.onerror = (error: ErrorEvent) => {
+            console.error('HandleDataWorker error:', error);
         };
 
         return () => {
-            buildTreeWorkerRef.current?.terminate();
+            handleDataWorkerRef.current?.terminate();
         };
     }, []);
 
     // Отправляем данные в воркер при изменении serverData или метрики
     useEffect(() => {
-        if (serverData && serverData.length > 0 && buildTreeWorkerRef.current) {
-            buildTreeRequestIdRef.current += 1;
-            const currentRequestId = buildTreeRequestIdRef.current;
+        if (serverData && serverData.length > 0 && handleDataWorkerRef.current) {
+            handleDataRequestIdRef.current += 1;
+            const currentRequestId = handleDataRequestIdRef.current;
 
-            console.log('Sending data to BuildTreeWorker, metric:', metric, 'requestId:', currentRequestId);
+            console.log('Sending data to HandleDataWorker, metric:', metric, 'requestId:', currentRequestId);
             try {
-                buildTreeWorkerRef.current.postMessage({
+                handleDataWorkerRef.current.postMessage({
                     data: serverData,
                     metric,
                     requestId: currentRequestId,
                 });
             } catch (error) {
-                console.error('Error sending message to BuildTreeWorker:', error);
+                console.error('Error sending message to HandleDataWorker:', error);
             }
         }
     }, [serverData, metric]);
