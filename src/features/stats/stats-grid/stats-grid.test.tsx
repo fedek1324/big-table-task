@@ -51,6 +51,8 @@ const formatNumber = (numberStr: string): number => {
     return Number(numberStr.replace(/\s/g, '').replace(',', '.'));
 };
 
+const compareDigitsCount = 3;
+
 describe('StatsGrid', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -131,6 +133,9 @@ describe('StatsGrid', () => {
                 returns: Array(30).fill(2),
             }),
         ];
+
+        const averageCost = 100;
+
         (STATS_API.getFull as any).mockResolvedValue(testData);
 
         const { container } = render(
@@ -143,11 +148,11 @@ describe('StatsGrid', () => {
         // Sum для cost должна быть (100 * 30 + 200 * 30) = 9000 для поставщика
         await waitFor(() => {
             const sumCells = container.querySelectorAll('[col-id="average"]');
-            expect(formatNumber(sumCells[1].textContent)).toBe(100);
+            expect(formatNumber(sumCells[1].textContent)).toBeCloseTo(averageCost, compareDigitsCount);
         });
     });
 
-    it('should display average as toFixed(3)', async () => {
+    it('should correctly display float average', async () => {
         // Подготавливаем мок-данные для этого теста
         const testData = [
             createMockData({
@@ -157,6 +162,9 @@ describe('StatsGrid', () => {
                 returns: Array(30).fill(2),
             }),
         ];
+
+        const averageCost = (86320 + 69013) / 30;
+
         (STATS_API.getFull as any).mockResolvedValue(testData);
 
         const { container } = render(
@@ -169,11 +177,11 @@ describe('StatsGrid', () => {
         // Sum для cost должна быть (100 * 30 + 200 * 30) = 9000 для поставщика
         await waitFor(() => {
             const sumCells = container.querySelectorAll('[col-id="average"]');
-            expect(formatNumber(sumCells[1].textContent)).toBe(5177.767);
+            expect(formatNumber(sumCells[1].textContent)).toBeCloseTo(averageCost, compareDigitsCount);
         });
     });
 
-    it('should correctly calculate revenue: revenue = cost * buyouts where buyouts = orders - returns', async () => {
+    it('should correctly calculate revenue sum and average', async () => {
         // Подготавливаем комплексный тест кейс с множественными товарами и разными стоимостями
         // revenue = cost * buyouts = cost * (orders - returns)
         const costData = Array(30)
@@ -192,6 +200,9 @@ describe('StatsGrid', () => {
         //         day 1: 150.75 * (21-6) = 150.75 * 15 = 2261.25
         //         ...
         // sum(revenue) для всех 30 дней = 74948.75
+        // average(revenue) 2498.2916666666665
+        const sum = 74948.75;
+        const average = 2498.2916666666665;
 
         const testData = [
             createMockData({
@@ -226,9 +237,14 @@ describe('StatsGrid', () => {
                 const sumCells = container.querySelectorAll('[col-id="sums"]');
                 expect(sumCells.length).toBeGreaterThan(0);
                 // sum(revenue) = sum of cost[i] * (orders[i] - returns[i]) for all 30 days = 74948.75
-                expect(formatNumber(sumCells[1].textContent || '0')).toBeCloseTo(74948.75, 0);
+                expect(formatNumber(sumCells[1].textContent || '0')).toBeCloseTo(sum, compareDigitsCount);
+
+                const averageCells = container.querySelectorAll('[col-id="average"]');
+                expect(averageCells.length).toBeGreaterThan(0);
+                // sum(revenue) = sum of cost[i] * (orders[i] - returns[i]) for all 30 days = 74948.75
+                expect(formatNumber(averageCells[1].textContent || '0')).toBeCloseTo(average, compareDigitsCount);
             },
             { timeout: 5000 },
         );
-    }, 10000);
+    });
 });
