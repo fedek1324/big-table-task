@@ -46,7 +46,10 @@ const createMockData = ({
     returns,
 });
 
-const formatNumber = (number: string): number => Number(number.replace(/\s/g, ''));
+const formatNumber = (numberStr: string): number => {
+    // Remove spaces (thousand separators) and replace comma with dot (decimal separator)
+    return Number(numberStr.replace(/\s/g, '').replace(',', '.'));
+};
 
 describe('StatsGrid', () => {
     beforeEach(() => {
@@ -141,6 +144,32 @@ describe('StatsGrid', () => {
         await waitFor(() => {
             const sumCells = container.querySelectorAll('[col-id="average"]');
             expect(formatNumber(sumCells[1].textContent)).toBe(100);
+        });
+    });
+
+    it('should display average as toFixed(3)', async () => {
+        // Подготавливаем мок-данные для этого теста
+        const testData = [
+            createMockData({
+                article: 'TEST-001',
+                cost: [...Array(28).fill(0), 86320, 69013],
+                orders: Array(30).fill(10),
+                returns: Array(30).fill(2),
+            }),
+        ];
+        (STATS_API.getFull as any).mockResolvedValue(testData);
+
+        const { container } = render(
+            <MemoryRouter initialEntries={['/stats?metric=cost']}>
+                <StatsGrid />
+            </MemoryRouter>,
+        );
+
+        // Проверяем что worker правильно агрегировал данные
+        // Sum для cost должна быть (100 * 30 + 200 * 30) = 9000 для поставщика
+        await waitFor(() => {
+            const sumCells = container.querySelectorAll('[col-id="average"]');
+            expect(formatNumber(sumCells[1].textContent)).toBe(5177.767);
         });
     });
 });
