@@ -72,6 +72,7 @@ export function StatsGrid() {
 
     // Отправляем данные в воркер при изменении serverData или метрики
     useEffect(() => {
+        setRowData(null);
         if (serverData && serverData.length > 0 && handleDataWorkerRef.current) {
             handleDataRequestIdRef.current += 1;
             const currentRequestId = handleDataRequestIdRef.current;
