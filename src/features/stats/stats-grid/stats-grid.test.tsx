@@ -220,15 +220,15 @@ describe('StatsGrid', () => {
             { timeout: 5000 },
         );
 
-        // Проверяем что сумма revenue вычислена правильно
+        // // Проверяем что сумма revenue вычислена правильно
         await waitFor(
             () => {
                 const sumCells = container.querySelectorAll('[col-id="sums"]');
                 expect(sumCells.length).toBeGreaterThan(0);
                 // sum(revenue) = sum of cost[i] * (orders[i] - returns[i]) for all 30 days = 74948.75
-                expect(formatNumber(sumCells[0].textContent || '0')).toBeCloseTo(74948.75, 0);
+                expect(formatNumber(sumCells[1].textContent || '0')).toBeCloseTo(74948.75, 0);
             },
-            { timeout: 10000 },
+            { timeout: 5000 },
         );
     }, 10000);
 });
