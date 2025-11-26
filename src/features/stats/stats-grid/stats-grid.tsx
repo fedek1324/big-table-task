@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import { IStatItem } from '../../../types/stats.types';
 import { STATS_API } from '../../../api/stats.api';
 import { ColDef, GridApi, GridReadyEvent, IServerSideDatasource, themeBalham } from 'ag-grid-enterprise';
+// TODO Select only needed
 // All Enterprise Features
 import { AllEnterpriseModule, ModuleRegistry } from 'ag-grid-enterprise';
 import { useSearchParams } from 'react-router-dom';
@@ -92,13 +93,6 @@ export function StatsGrid() {
         const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
         setColumnDefs(statsGridColumnsFactory(dates));
     }, [metric]);
-
-    // После получения rowData из worker
-    useEffect(() => {
-        if (rowData && gridApi) {
-            gridApi.refreshServerSide({ purge: true });
-        }
-    }, [rowData, gridApi]);
 
     const onGridReady = (event: GridReadyEvent) => {
         const datasource: IServerSideDatasource<any> = {
