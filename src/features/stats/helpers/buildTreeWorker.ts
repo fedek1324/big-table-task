@@ -1,12 +1,5 @@
 import { IStatItem } from '../../../types/stats.types';
-import {
-    TreeNode,
-    SupplierNode,
-    BrandNode,
-    GoodTypeNode,
-    ArticleNode,
-    createNodeId,
-} from '../../../types/tree.types';
+import { TreeNode, SupplierNode, BrandNode, GoodTypeNode, ArticleNode, createNodeId } from '../../../types/tree.types';
 import { Metrics } from '../stats.const';
 
 console.log('buildTreeWorker imported');
@@ -23,9 +16,6 @@ onmessage = function (e) {
 
     postMessage({
         treeData: treeObject,
-        rootNodeIds: Array.from(treeMap.values())
-            .filter((node) => node.level === 0)
-            .map((node) => node.id),
         requestId,
     });
 };
