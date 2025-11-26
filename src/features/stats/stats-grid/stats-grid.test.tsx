@@ -35,18 +35,16 @@ const createMockData = ({
     cost = Array(30).fill(100),
     orders = Array(30).fill(10),
     returns = Array(30).fill(2),
-}: MockDataParams = {}): IStatItem[] => [
-    {
-        supplier,
-        brand,
-        type,
-        article,
-        lastUpdate,
-        cost,
-        orders,
-        returns,
-    },
-];
+}: MockDataParams = {}): IStatItem => ({
+    supplier,
+    brand,
+    type,
+    article,
+    lastUpdate,
+    cost,
+    orders,
+    returns,
+});
 
 describe('StatsGrid', () => {
     beforeEach(() => {
@@ -85,14 +83,14 @@ describe('StatsGrid', () => {
     it('should render table with Test supplier', async () => {
         // Подготавливаем мок-данные для этого теста
         const testData = [
-            ...createMockData({
+            createMockData({
                 supplier: 'Test Supplier', // Explicitly setting supplier name
                 article: 'TEST-001',
                 cost: Array(30).fill(100),
                 orders: Array(30).fill(10),
                 returns: Array(30).fill(2),
             }),
-            ...createMockData({
+            createMockData({
                 supplier: 'Test Supplier', // Explicitly setting supplier name
                 article: 'TEST-002',
                 cost: Array(30).fill(200),
@@ -136,13 +134,13 @@ describe('StatsGrid', () => {
     it('should correctly display aggregated data', async () => {
         // Подготавливаем мок-данные для этого теста
         const testData = [
-            ...createMockData({
+            createMockData({
                 article: 'TEST-001',
                 cost: Array(30).fill(100),
                 orders: Array(30).fill(10),
                 returns: Array(30).fill(2),
             }),
-            ...createMockData({
+            createMockData({
                 article: 'TEST-002',
                 cost: Array(30).fill(200),
                 orders: Array(30).fill(20),
@@ -187,16 +185,18 @@ describe('StatsGrid', () => {
         const oldDate = new Date();
         oldDate.setDate(oldDate.getDate() - 31);
 
-        const oldMockData = createMockData({
-            supplier: 'Old Supplier',
-            brand: 'Old Brand',
-            type: 'Old Type',
-            article: 'OLD-001',
-            lastUpdate: oldDate.toISOString(),
-            cost: Array(30).fill(100),
-            orders: Array(30).fill(10),
-            returns: Array(30).fill(2),
-        });
+        const oldMockData = [
+            createMockData({
+                supplier: 'Old Supplier',
+                brand: 'Old Brand',
+                type: 'Old Type',
+                article: 'OLD-001',
+                lastUpdate: oldDate.toISOString(),
+                cost: Array(30).fill(100),
+                orders: Array(30).fill(10),
+                returns: Array(30).fill(2),
+            }),
+        ];
 
         (STATS_API.getFull as any).mockResolvedValue(oldMockData);
 
