@@ -10,7 +10,7 @@ import { Metrics } from '../stats.const';
 import { TreeNode } from '../../../types/tree.types';
 import './stats-grid.scss';
 import { statsGridColumnsFactory } from './stats-grid.columns';
-import { $rowData, setMetric, initWorker, terminateWorker } from '../../../store/stats.store';
+import { $rowData, setMetric } from '../../../store/stats.store';
 
 ModuleRegistry.registerModules([AllEnterpriseModule]);
 
@@ -18,17 +18,7 @@ export function StatsGrid() {
     const [columnDefs, setColumnDefs] = useState<ColDef<TreeNode>[]>([]);
     const [searchParams] = useSearchParams();
     const metric = searchParams.get('metric') ?? Metrics.cost;
-
-    // Подключаемся к Effector store
     const rowData = useUnit($rowData);
-
-    // Инициализируем worker при монтировании компонента
-    useEffect(() => {
-        initWorker();
-        return () => {
-            terminateWorker();
-        };
-    }, []);
 
     // Устанавливаем метрику из URL параметров в store
     useEffect(() => {

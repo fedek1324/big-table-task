@@ -2,7 +2,6 @@ import { createStore, createEvent, createEffect, sample } from 'effector';
 import { IStatItem } from '../types/stats.types';
 import { TreeNode } from '../types/tree.types';
 import { STATS_API } from '../api/stats.api';
-import { Metrics } from '../features/stats/stats.const';
 import HandleDataWorker from '../features/stats/helpers/handleDataWorker?worker';
 
 // ========== Events ==========
@@ -19,11 +18,6 @@ export const workerMessageReceived = createEvent<{
     treeData: Record<string, TreeNode>;
     requestId: number;
 }>();
-
-/**
- * Инициализация worker-а
- */
-export const initWorker = createEvent();
 
 /**
  * Завершение работы worker-а
@@ -65,9 +59,9 @@ export const sendToWorkerFx = createEffect(
 
 /**
  * Текущая метрика (cost, revenue, orders, returns, buyouts)
- * Изначально устанавливается в 'cost'
+ * Изначально null, устанавливается из компонента
  */
-export const $metric = createStore<string>(Metrics.cost).on(setMetric, (_, metric) => metric);
+export const $metric = createStore<string | null>(null).on(setMetric, (_, metric) => metric);
 
 /**
  * Данные с сервера (сырые данные из API)
@@ -95,39 +89,32 @@ export const $requestId = createStore<number>(0);
 
 /**
  * Инстанс worker-а
+ * Инициализируется сразу при загрузке модуля
  */
-export const $worker = createStore<Worker | null>(null)
-    .on(initWorker, (worker) => {
-        if (worker) {
-            console.log('Worker уже инициализирован');
-            return worker;
-        }
+console.log('Инициализация worker');
+const handleDataWorker = new HandleDataWorker();
 
-        console.log('Инициализация worker');
-        const newWorker = new HandleDataWorker();
+handleDataWorker.onmessage = (e: MessageEvent) => {
+    const { treeData, requestId } = e.data;
+    console.log('Получено сообщение от worker, requestId:', requestId);
+    workerMessageReceived({ treeData, requestId });
+};
 
-        newWorker.onmessage = (e: MessageEvent) => {
-            const { treeData, requestId } = e.data;
-            console.log('Получено сообщение от worker, requestId:', requestId);
-            workerMessageReceived({ treeData, requestId });
-        };
+handleDataWorker.onerror = (error: ErrorEvent) => {
+    console.error('Ошибка worker:', error);
+};
 
-        newWorker.onerror = (error: ErrorEvent) => {
-            console.error('Ошибка worker:', error);
-        };
-
-        return newWorker;
-    })
-    .on(terminateWorker, (worker) => {
-        console.log('Завершение работы worker');
-        worker?.terminate();
-        return null;
-    });
+export const $worker = createStore<Worker>(handleDataWorker).on(terminateWorker, (worker) => {
+    console.log('Завершение работы worker');
+    worker.terminate();
+    return handleDataWorker;
+});
 
 // ========== Logic (Samples) ==========
 
 /**
  * При изменении serverData или metric - отправляем данные в worker
+ * Данные отправляются только после того, как метрика была явно установлена
  */
 sample({
     clock: [$serverData, $metric],
@@ -137,17 +124,17 @@ sample({
         worker: $worker,
         requestId: $requestId,
     },
-    filter: ({ serverData, worker }) => {
+    filter: ({ serverData, metric }) => {
         const hasData = serverData !== null && serverData.length > 0;
-        const hasWorker = worker !== null;
+        const hasMetric = metric !== null;
         if (!hasData) console.log('Нет данных с сервера, пропуск отправки в worker');
-        if (!hasWorker) console.log('Worker не инициализирован, пропуск');
-        return hasData && hasWorker;
+        if (!hasMetric) console.log('Метрика не установлена, ожидание установки метрики');
+        return hasData && hasMetric;
     },
     fn: ({ serverData, metric, worker, requestId }) => ({
-        worker: worker!,
+        worker,
         data: serverData!,
-        metric,
+        metric: metric!,
         requestId: requestId + 1,
     }),
     target: sendToWorkerFx,
