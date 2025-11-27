@@ -1,94 +1,39 @@
 import { AgGridReact } from 'ag-grid-react';
-import { useEffect, useState, useRef } from 'react';
-import { IStatItem } from '../../../types/stats.types';
-import { STATS_API } from '../../../api/stats.api';
+import { useEffect, useState } from 'react';
 import { ColDef, GridReadyEvent, IServerSideDatasource, themeBalham } from 'ag-grid-enterprise';
 // TODO Select only needed
 // All Enterprise Features
 import { AllEnterpriseModule, ModuleRegistry } from 'ag-grid-enterprise';
 import { useSearchParams } from 'react-router-dom';
+import { useUnit } from 'effector-react';
 import { Metrics } from '../stats.const';
-import HandleDataWorker from '../helpers/handleDataWorker?worker';
 import { TreeNode } from '../../../types/tree.types';
 import './stats-grid.scss';
 import { statsGridColumnsFactory } from './stats-grid.columns';
+import { $rowData, setMetric, initWorker, terminateWorker } from '../../../store/stats.store';
 
 ModuleRegistry.registerModules([AllEnterpriseModule]);
 
 export function StatsGrid() {
-    const [serverData, setServerData] = useState<IStatItem[] | null>(null); // Данные с сервера
-    const [rowData, setRowData] = useState<TreeNode[] | null>(null); // Данные для AG-Grid
     const [columnDefs, setColumnDefs] = useState<ColDef<TreeNode>[]>([]);
     const [searchParams] = useSearchParams();
     const metric = searchParams.get('metric') ?? Metrics.cost;
-    const handleDataWorkerRef = useRef<Worker | null>(null);
-    const handleDataRequestIdRef = useRef<number>(0);
 
-    // Алгоритм
-    // 1. Загружаем данные через getFull ОДИН РАЗ и сохраняем в serverData
-    // 2. Эти данные отправляем в worker для агрегации по данной метрике
-    //    В результате получаем массив данных TreeNode[].
-    // 3. Отображаем TreeNode[] отображаем в AG-Grid с использованием SSRM для
-    //    динамической отправки нужных данных в таблицу.
-    // TODO: Кэшируем через indexDb
+    // Подключаемся к Effector store
+    const rowData = useUnit($rowData);
 
-    // Загружаем данные с сервера ОДИН РАЗ
+    // Инициализируем worker при монтировании компонента
     useEffect(() => {
-        STATS_API.getFull().then((data) => {
-            console.log('getFull data:', data);
-            setServerData(data);
-        });
-    }, []);
-
-    // Инициализируем handleDataWorker
-    useEffect(() => {
-        handleDataWorkerRef.current = new HandleDataWorker();
-
-        handleDataWorkerRef.current.onmessage = (e: MessageEvent) => {
-            const { treeData, requestId } = e.data;
-            console.log('HandleDataWorker: onmessage, requestId:', requestId);
-
-            // Игнорируем устаревшие ответы
-            if (requestId !== handleDataRequestIdRef.current) {
-                console.log('HandleDataWorker: Ignoring outdated response, expected:', handleDataRequestIdRef.current);
-                return;
-            }
-
-            console.log('HandleDataWorker: Tree received, nodes count:', Object.keys(treeData).length);
-
-            // Преобразуем object в массив TreeNode
-            const treeArray = Object.values(treeData) as TreeNode[];
-            setRowData(treeArray);
-        };
-
-        handleDataWorkerRef.current.onerror = (error: ErrorEvent) => {
-            console.error('HandleDataWorker error:', error);
-        };
-
+        initWorker();
         return () => {
-            handleDataWorkerRef.current?.terminate();
+            terminateWorker();
         };
     }, []);
 
-    // Отправляем данные в воркер при изменении serverData или метрики
+    // Устанавливаем метрику из URL параметров в store
     useEffect(() => {
-        setRowData(null);
-        if (serverData && serverData.length > 0 && handleDataWorkerRef.current) {
-            handleDataRequestIdRef.current += 1;
-            const currentRequestId = handleDataRequestIdRef.current;
-
-            console.log('Sending data to HandleDataWorker, metric:', metric, 'requestId:', currentRequestId);
-            try {
-                handleDataWorkerRef.current.postMessage({
-                    data: serverData,
-                    metric,
-                    requestId: currentRequestId,
-                });
-            } catch (error) {
-                console.error('Error sending message to HandleDataWorker:', error);
-            }
-        }
-    }, [serverData, metric]);
+        setMetric(metric);
+    }, [metric]);
 
     // Генерируем колонки для TreeNode
     useEffect(() => {
@@ -116,16 +61,16 @@ export function StatsGrid() {
 
                 if (level === 0) {
                     // Root level - return all top-level nodes (suppliers)
-                    allFilteredRows = rowData.filter((node) => node.level === 0);
+                    allFilteredRows = rowData.filter((node: TreeNode) => node.level === 0);
                 } else {
                     // Find the parent node based on groupKeys
                     const parentId = groupKeys[groupKeys.length - 1];
-                    const parentNode = rowData.find((node) => node.id === parentId);
+                    const parentNode = rowData.find((node: TreeNode) => node.id === parentId);
 
                     if (parentNode && parentNode.children.length > 0) {
                         // Return children of this parent
                         const childIds = parentNode.children as string[];
-                        allFilteredRows = rowData.filter((node) => childIds.includes(node.id));
+                        allFilteredRows = rowData.filter((node: TreeNode) => childIds.includes(node.id));
                     } else {
                         allFilteredRows = [];
                     }
