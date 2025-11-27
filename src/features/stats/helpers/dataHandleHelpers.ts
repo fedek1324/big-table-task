@@ -189,7 +189,7 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
                 type,
                 metricData: agg.metricData,
                 sum,
-                average: sum / daysCount,
+                average: sum / (daysCount * agg.count), // Среднее на один артикул в день
             };
             nodesMap.set(nodeId, typeNode);
         }
@@ -213,7 +213,7 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
                 brand,
                 metricData: agg.metricData,
                 sum,
-                average: sum / daysCount,
+                average: sum / (daysCount * agg.count), // Среднее на один артикул в день
             };
             nodesMap.set(nodeId, brandNode);
         }
@@ -234,7 +234,7 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
                 supplier,
                 metricData: agg.metricData,
                 sum,
-                average: sum / daysCount,
+                average: sum / (daysCount * agg.count), // Среднее на один артикул в день
             };
             nodesMap.set(nodeId, supplierNode);
         }
