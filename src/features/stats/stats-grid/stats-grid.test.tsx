@@ -1,16 +1,16 @@
 import '@testing-library/jest-dom';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { processData } from '../helpers/dataHandleHelpers';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { StatsGrid } from './stats-grid';
 import { STATS_API } from '../../../api/stats.api';
+import { loadServerDataFx } from '../../../store/stats.store';
 import type { IStatItem } from '../../../types/stats.types';
 
-// Мокаем API
+// Мокаем API с дефолтным значением
 vi.mock('../../../api/stats.api', () => ({
     STATS_API: {
-        getFull: vi.fn(),
+        getFull: vi.fn().mockResolvedValue([]),
     },
 }));
 
@@ -56,35 +56,6 @@ const compareDigitsCount = 3;
 describe('StatsGrid', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-
-        // Stub global Worker
-        class MockWorker {
-            onmessage: ((ev: MessageEvent) => void) | null = null;
-            onerror: ((ev: ErrorEvent) => void) | null = null;
-
-            constructor(_script?: string, _options?: any) {}
-
-            postMessage(msg: any) {
-                const { data, metric, requestId } = msg;
-                try {
-                    const result = processData(data, metric, requestId);
-                    // Emulate async behaviour of web worker
-                    setTimeout(() => {
-                        if (this.onmessage) this.onmessage({ data: result } as MessageEvent);
-                    }, 0);
-                } catch (error) {
-                    if (this.onerror) this.onerror({ error } as ErrorEvent);
-                }
-            }
-
-            terminate() {}
-        }
-
-        vi.stubGlobal('Worker', MockWorker as typeof Worker);
-    });
-
-    afterEach(() => {
-        vi.unstubAllGlobals();
     });
 
     it('should render table with Test supplier', async () => {
@@ -99,6 +70,7 @@ describe('StatsGrid', () => {
             }),
         ];
         (STATS_API.getFull as any).mockResolvedValue(testData);
+        await loadServerDataFx();
 
         const { container } = render(
             <MemoryRouter initialEntries={['/stats?metric=cost']}>
@@ -137,6 +109,7 @@ describe('StatsGrid', () => {
         const averageCost = 100;
 
         (STATS_API.getFull as any).mockResolvedValue(testData);
+        await loadServerDataFx();
 
         const { container } = render(
             <MemoryRouter initialEntries={['/stats?metric=cost']}>
@@ -166,6 +139,7 @@ describe('StatsGrid', () => {
         const averageCost = (86320 + 69013) / 30;
 
         (STATS_API.getFull as any).mockResolvedValue(testData);
+        await loadServerDataFx();
 
         const { container } = render(
             <MemoryRouter initialEntries={['/stats?metric=cost']}>
@@ -215,6 +189,7 @@ describe('StatsGrid', () => {
             }),
         ];
         (STATS_API.getFull as any).mockResolvedValue(testData);
+        await loadServerDataFx();
 
         const { container } = render(
             <MemoryRouter initialEntries={['/stats?metric=revenue']}>
@@ -282,6 +257,7 @@ describe('StatsGrid', () => {
         const expectedAverage = 666.667;
 
         (STATS_API.getFull as any).mockResolvedValue(testData);
+        await loadServerDataFx();
 
         const { container } = render(
             <MemoryRouter initialEntries={['/stats?metric=revenue']}>
@@ -361,6 +337,7 @@ describe('StatsGrid', () => {
             }),
         ];
         (STATS_API.getFull as any).mockResolvedValue(testData);
+        await loadServerDataFx();
 
         const { container } = render(
             <MemoryRouter initialEntries={['/stats?metric=revenue']}>
