@@ -1,9 +1,6 @@
 import { AgGridReact } from 'ag-grid-react';
 import { useEffect, useState } from 'react';
 import { ColDef, GridReadyEvent, IServerSideDatasource, themeBalham } from 'ag-grid-enterprise';
-// TODO: Выбрать только необходимые модули
-// Все Enterprise модули
-import { AllEnterpriseModule, ModuleRegistry } from 'ag-grid-enterprise';
 import { useSearchParams } from 'react-router-dom';
 import { useUnit } from 'effector-react';
 import { Metrics } from '../stats.const';
@@ -11,8 +8,6 @@ import { TreeNode } from '../../../types/tree.types';
 import './stats-grid.scss';
 import { statsGridColumnsFactory } from './stats-grid.columns';
 import { $rowData, setMetric } from '../../../store/stats.store';
-
-ModuleRegistry.registerModules([AllEnterpriseModule]);
 
 export function StatsGrid() {
     const [columnDefs, setColumnDefs] = useState<ColDef<TreeNode>[]>([]);

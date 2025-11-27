@@ -17,6 +17,7 @@ import {
     PivotModule,
     AllCommunityModule,
     ModuleRegistry,
+    ServerSideRowModelModule,
 } from 'ag-grid-enterprise';
 
 ModuleRegistry.registerModules([
@@ -37,4 +38,5 @@ ModuleRegistry.registerModules([
     StatusBarModule,
     ExcelExportModule,
     ClipboardModule,
+    ServerSideRowModelModule,
 ]);
