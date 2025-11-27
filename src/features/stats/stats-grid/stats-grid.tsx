@@ -1,8 +1,8 @@
 import { AgGridReact } from 'ag-grid-react';
 import { useEffect, useState } from 'react';
 import { ColDef, GridReadyEvent, IServerSideDatasource, themeBalham } from 'ag-grid-enterprise';
-// TODO Select only needed
-// All Enterprise Features
+// TODO: Выбрать только необходимые модули
+// Все Enterprise модули
 import { AllEnterpriseModule, ModuleRegistry } from 'ag-grid-enterprise';
 import { useSearchParams } from 'react-router-dom';
 import { useUnit } from 'effector-react';
@@ -34,10 +34,10 @@ export function StatsGrid() {
     const onGridReady = (event: GridReadyEvent) => {
         const datasource: IServerSideDatasource<any> = {
             getRows(params) {
-                console.log('getRows request:', JSON.stringify(params.request, null, 1));
+                console.log('Запрос getRows:', JSON.stringify(params.request, null, 1));
 
                 if (!rowData || rowData.length === 0) {
-                    console.log('No rowData available yet');
+                    console.log('Данные еще не загружены');
                     params.success({ rowData: [] });
                     return;
                 }
@@ -45,20 +45,20 @@ export function StatsGrid() {
                 const { groupKeys, startRow, endRow } = params.request;
                 const level = groupKeys.length;
 
-                console.log('Requested level:', level, 'groupKeys:', groupKeys, 'startRow:', startRow, 'endRow:', endRow);
+                console.log('Запрошен уровень:', level, 'groupKeys:', groupKeys, 'startRow:', startRow, 'endRow:', endRow);
 
                 let allFilteredRows: TreeNode[];
 
                 if (level === 0) {
-                    // Root level - return all top-level nodes (suppliers)
+                    // Корневой уровень - возвращаем все узлы верхнего уровня (поставщики)
                     allFilteredRows = rowData.filter((node: TreeNode) => node.level === 0);
                 } else {
-                    // Find the parent node based on groupKeys
+                    // Находим родительский узел по groupKeys
                     const parentId = groupKeys[groupKeys.length - 1];
                     const parentNode = rowData.find((node: TreeNode) => node.id === parentId);
 
                     if (parentNode && parentNode.children.length > 0) {
-                        // Return children of this parent
+                        // Возвращаем дочерние узлы этого родителя
                         const childIds = parentNode.children as string[];
                         allFilteredRows = rowData.filter((node: TreeNode) => childIds.includes(node.id));
                     } else {
@@ -66,11 +66,11 @@ export function StatsGrid() {
                     }
                 }
 
-                // Slice the data according to startRow and endRow for pagination
+                // Нарезаем данные согласно startRow и endRow для пагинации
                 const rowsToReturn = allFilteredRows.slice(startRow, endRow);
                 const totalRowCount = allFilteredRows.length;
 
-                console.log('Total rows available:', totalRowCount, 'Returning rows:', rowsToReturn.length, `(${startRow}-${endRow})`);
+                console.log('Всего строк доступно:', totalRowCount, 'Возвращается строк:', rowsToReturn.length, `(${startRow}-${endRow})`);
 
                 params.success({
                     rowData: rowsToReturn,
@@ -100,7 +100,7 @@ export function StatsGrid() {
                             const data = params.data as TreeNode;
                             if (!data) return '';
 
-                            // Display the appropriate field based on node level
+                            // Отображаем соответствующее поле в зависимости от уровня узла
                             switch (data.level) {
                                 case 0:
                                     return data.supplier;
