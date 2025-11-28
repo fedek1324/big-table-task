@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import { processData } from '../features/stats/helpers/dataHandleHelpers';
+import '../lib/ag-grid';
 
 // Мокаем Worker глобально перед загрузкой любых модулей
 class MockWorker {

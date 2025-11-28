@@ -58,6 +58,38 @@ describe('StatsGrid', () => {
         vi.clearAllMocks();
     });
 
+    it('should render table', async () => {
+        // Подготавливаем мок-данные для этого теста
+        const testData = [
+            createMockData({
+                supplier: 'Test Supplier', // Explicitly setting supplier name
+                article: 'TEST-001',
+                cost: Array(30).fill(100),
+                orders: Array(30).fill(10),
+                returns: Array(30).fill(2),
+            }),
+        ];
+        (STATS_API.getFull as any).mockResolvedValue(testData);
+        await loadServerDataFx();
+
+        const { container } = render(
+            <MemoryRouter initialEntries={['/stats?metric=cost']}>
+                <StatsGrid />
+            </MemoryRouter>,
+        );
+
+        console.log('Table');
+        console.log(container.querySelector('.ag-root-wrapper'));
+
+        await waitFor(
+            () => {
+                const grid = container.querySelector('.ag-root-wrapper');
+                expect(grid).toBeInTheDocument();
+            },
+            { timeout: 5000 },
+        );
+    });
+
     it('should render table with Test supplier', async () => {
         // Подготавливаем мок-данные для этого теста
         const testData = [
