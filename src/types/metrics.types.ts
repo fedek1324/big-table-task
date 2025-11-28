@@ -1,4 +1,4 @@
-import { Levels } from '../../types/stats.types';
+import { Levels } from './stats.types';
 
 export enum Metrics {
     cost = 'cost',

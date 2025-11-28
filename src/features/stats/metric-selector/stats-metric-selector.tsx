@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Form } from 'react-bootstrap';
 import { useSearchParams } from 'react-router-dom';
-import { isMetric, Metrics, METRICS_LABELS } from '../stats.const';
+import { isMetric, Metrics, METRICS_LABELS } from '../../../types/metrics.types';
 
 export function StatsMetricSelector() {
     const [searchParams, setSearchParams] = useSearchParams();

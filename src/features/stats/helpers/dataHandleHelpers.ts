@@ -1,6 +1,6 @@
 import { IStatItem, Levels } from '../../../types/stats.types';
 import { TreeNode, SupplierNode, BrandNode, GoodTypeNode, ArticleNode, createNodeId } from '../../../types/tree.types';
-import { Metrics } from '../stats.const';
+import { Metrics } from '../../../types/metrics.types';
 
 // Тип для данных без lastUpdate после фильтрации
 // Массивы могут содержать undefined для дней, где нет данных

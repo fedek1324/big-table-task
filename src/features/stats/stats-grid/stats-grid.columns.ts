@@ -1,6 +1,6 @@
 import { ColDef, ColDefField, ValueFormatterParams, ValueGetterParams } from 'ag-grid-enterprise';
 import { ORDERED_LEVELS } from '../../../types/stats.types';
-import { METADATA_LABELS } from '../stats.const';
+import { METADATA_LABELS } from '../../../types/metrics.types';
 import { TreeNodeBase } from '../../../types/tree.types';
 
 // TODO maybe inherit statItem

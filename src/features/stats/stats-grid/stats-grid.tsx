@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ColDef, GridReadyEvent, IServerSideDatasource, themeBalham } from 'ag-grid-enterprise';
 import { useSearchParams } from 'react-router-dom';
 import { useUnit } from 'effector-react';
-import { Metrics } from '../stats.const';
+import { Metrics } from '../../../types/metrics.types';
 import { Levels } from '../../../types/stats.types';
 import { TreeNode } from '../../../types/tree.types';
 import './stats-grid.scss';
