@@ -1,10 +1,12 @@
+import { Levels } from './stats.types';
+
 // Базовый интерфейс для всех узлов дерева
 export interface TreeNodeBase {
     // Уникальный ID узла
     id: string;
 
-    // Уровень в иерархии (0 = supplier, 1 = brand, 2 = type, 3 = article)
-    level: number;
+    // Уровень в иерархии
+    level: Levels;
 
     // Массив ID дочерних узлов
     children: string[];
@@ -18,30 +20,30 @@ export interface TreeNodeBase {
     average: number;
 }
 
-// Узел поставщика (верхний уровень, level = 0)
+// Узел поставщика (верхний уровень)
 export interface SupplierNode extends TreeNodeBase {
-    level: 0;
+    level: Levels.supplier;
     supplier: string;
 }
 
-// Узел бренда (второй уровень, level = 1)
+// Узел бренда (второй уровень)
 export interface BrandNode extends TreeNodeBase {
-    level: 1;
+    level: Levels.brand;
     supplier: string;
     brand: string;
 }
 
-// Узел типа товара (третий уровень, level = 2)
+// Узел типа товара (третий уровень)
 export interface GoodTypeNode extends TreeNodeBase {
-    level: 2;
+    level: Levels.type;
     supplier: string;
     brand: string;
     type: string;
 }
 
-// Узел артикула (листовой узел, четвёртый уровень, level = 3)
+// Узел артикула (листовой узел, четвёртый уровень)
 export interface ArticleNode extends TreeNodeBase {
-    level: 3;
+    level: Levels.article;
     children: []; // Всегда пустой массив для листовых узлов
     supplier: string;
     brand: string;

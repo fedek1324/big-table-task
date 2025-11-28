@@ -4,6 +4,7 @@ import { ColDef, GridReadyEvent, IServerSideDatasource, themeBalham } from 'ag-g
 import { useSearchParams } from 'react-router-dom';
 import { useUnit } from 'effector-react';
 import { Metrics } from '../stats.const';
+import { Levels } from '../../../types/stats.types';
 import { TreeNode } from '../../../types/tree.types';
 import './stats-grid.scss';
 import { statsGridColumnsFactory } from './stats-grid.columns';
@@ -44,7 +45,7 @@ export function StatsGrid() {
                 let allFilteredRows: TreeNode[];
                 if (level === 0) {
                     // Корневой уровень - возвращаем все узлы верхнего уровня (поставщики)
-                    allFilteredRows = Object.values(rowData).filter((node: TreeNode) => node.level === 0);
+                    allFilteredRows = Object.values(rowData).filter((node: TreeNode) => node.level === Levels.supplier);
                 } else {
                     const parentId = groupKeys[groupKeys.length - 1];
                     let parentNode: TreeNode | undefined = rowData[parentId];
@@ -88,13 +89,13 @@ export function StatsGrid() {
 
                             // Отображаем соответствующее поле в зависимости от уровня узла
                             switch (data.level) {
-                                case 0:
+                                case Levels.supplier:
                                     return data.supplier;
-                                case 1:
+                                case Levels.brand:
                                     return data.brand;
-                                case 2:
+                                case Levels.type:
                                     return data.type;
-                                case 3:
+                                case Levels.article:
                                     return data.article;
                                 default:
                                     return '';

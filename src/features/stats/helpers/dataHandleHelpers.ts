@@ -1,4 +1,4 @@
-import { IStatItem } from '../../../types/stats.types';
+import { IStatItem, Levels } from '../../../types/stats.types';
 import { TreeNode, SupplierNode, BrandNode, GoodTypeNode, ArticleNode, createNodeId } from '../../../types/tree.types';
 import { Metrics } from '../stats.const';
 
@@ -140,7 +140,7 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
         // Создаем узел артикула
         const articleNode: ArticleNode = {
             id: articleId,
-            level: 3,
+            level: Levels.article,
             children: [],
             supplier: item.supplier,
             brand: item.brand,
@@ -188,7 +188,7 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
 
             const typeNode: GoodTypeNode = {
                 id: nodeId,
-                level: 2,
+                level: Levels.type,
                 children: Array.from(children),
                 supplier,
                 brand,
@@ -216,7 +216,7 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
 
             const brandNode: BrandNode = {
                 id: nodeId,
-                level: 1,
+                level: Levels.brand,
                 children: Array.from(children),
                 supplier,
                 brand,
@@ -241,7 +241,7 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
 
             const supplierNode: SupplierNode = {
                 id: nodeId,
-                level: 0,
+                level: Levels.supplier,
                 children: Array.from(children),
                 supplier,
                 metricData: agg.metricData,
