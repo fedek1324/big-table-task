@@ -31,7 +31,7 @@ export const terminateWorker = createEvent();
  */
 export const loadServerDataFx = createEffect(async () => {
     const data = await STATS_API.getFull();
-    console.log('Загружены данные с сервера, записей:', data.length);
+    console.log('Загружены данные с сервера:', data);
     return data;
 });
 
@@ -39,17 +39,7 @@ export const loadServerDataFx = createEffect(async () => {
  * Отправляет данные в worker для обработки
  */
 export const sendToWorkerFx = createEffect(
-    ({
-        worker,
-        data,
-        metric,
-        requestId,
-    }: {
-        worker: Worker;
-        data: IStatItem[];
-        metric: string;
-        requestId: number;
-    }) => {
+    ({ worker, data, metric, requestId }: { worker: Worker; data: IStatItem[]; metric: string; requestId: number }) => {
         console.log('Отправка данных в worker, метрика:', metric, 'requestId:', requestId);
         worker.postMessage({ data, metric, requestId });
     },
@@ -66,19 +56,16 @@ export const $metric = createStore<string | null>(null).on(setMetric, (_, metric
 /**
  * Данные с сервера (сырые данные из API)
  */
-export const $serverData = createStore<IStatItem[] | null>(null).on(
-    loadServerDataFx.doneData,
-    (_, data) => data,
-);
+export const $serverData = createStore<IStatItem[] | null>(null).on(loadServerDataFx.doneData, (_, data) => data);
 
 /**
  * Обработанные данные для таблицы (результат работы worker-а)
+ * Хранится как объект { [nodeId]: TreeNode } для быстрого доступа по ID
  */
-export const $rowData = createStore<TreeNode[] | null>(null)
+export const $rowData = createStore<Record<string, TreeNode> | null>(null)
     .on(workerMessageReceived, (_, { treeData }) => {
-        const treeArray = Object.values(treeData) as TreeNode[];
-        console.log('Получены обработанные данные от worker, узлов:', treeArray.length);
-        return treeArray;
+        console.log('Получены обработанные данные от worker, узлов:', Object.keys(treeData).length);
+        return treeData;
     })
     .reset(setMetric); // Сбрасываем данные при смене метрики
 

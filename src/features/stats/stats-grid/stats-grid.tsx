@@ -31,7 +31,7 @@ export function StatsGrid() {
             getRows(params) {
                 console.log('Запрос getRows:', JSON.stringify(params.request, null, 1));
 
-                if (!rowData || rowData.length === 0) {
+                if (!rowData || Object.keys(rowData).length === 0) {
                     console.log('Данные еще не загружены');
                     params.success({ rowData: [] });
                     return;
@@ -41,24 +41,15 @@ export function StatsGrid() {
                 const level = groupKeys.length;
 
                 console.log('Запрошен уровень:', level, 'groupKeys:', groupKeys, 'startRow:', startRow, 'endRow:', endRow);
-
                 let allFilteredRows: TreeNode[];
-
                 if (level === 0) {
                     // Корневой уровень - возвращаем все узлы верхнего уровня (поставщики)
-                    allFilteredRows = rowData.filter((node: TreeNode) => node.level === 0);
+                    allFilteredRows = Object.values(rowData).filter((node: TreeNode) => node.level === 0);
                 } else {
-                    // Находим родительский узел по groupKeys
                     const parentId = groupKeys[groupKeys.length - 1];
-                    const parentNode = rowData.find((node: TreeNode) => node.id === parentId);
-
-                    if (parentNode && parentNode.children.length > 0) {
-                        // Возвращаем дочерние узлы этого родителя
-                        const childIds = parentNode.children as string[];
-                        allFilteredRows = rowData.filter((node: TreeNode) => childIds.includes(node.id));
-                    } else {
-                        allFilteredRows = [];
-                    }
+                    let parentNode: TreeNode | undefined = rowData[parentId];
+                    const childIds = parentNode.children as string[];
+                    allFilteredRows = childIds.map((id) => rowData[id]).filter(Boolean);
                 }
 
                 // Нарезаем данные согласно startRow и endRow для пагинации
