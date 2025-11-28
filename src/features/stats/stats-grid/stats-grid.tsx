@@ -1,6 +1,6 @@
 import { AgGridReact } from 'ag-grid-react';
-import { useEffect, useState } from 'react';
-import { ColDef, GridReadyEvent, IServerSideDatasource, themeBalham } from 'ag-grid-enterprise';
+import { useEffect, useState, useRef } from 'react';
+import { ColDef, GridReadyEvent, IServerSideDatasource, GridApi, themeBalham } from 'ag-grid-enterprise';
 import { useSearchParams } from 'react-router-dom';
 import { useUnit } from 'effector-react';
 import { Metrics, isMetric } from '../../../types/metrics.types';
@@ -12,6 +12,7 @@ import { $rowData, setMetric } from '../../../store/stats.store';
 
 export function StatsGrid() {
     const [columnDefs, setColumnDefs] = useState<ColDef<TreeNode>[]>([]);
+    const gridApiRef = useRef<GridApi | null>(null);
     const [searchParams] = useSearchParams();
     const metricParam = searchParams.get('metric');
     const metric = metricParam && isMetric(metricParam) ? metricParam : Metrics.cost;
@@ -28,92 +29,101 @@ export function StatsGrid() {
         setColumnDefs(statsGridColumnsFactory(dates));
     }, [metric]);
 
+    // Создаем datasource на основе текущих данных
+    const createDatasource = (data: Record<string, TreeNode> | null): IServerSideDatasource<any> => ({
+        getRows(params) {
+            console.log('Запрос getRows:', JSON.stringify(params.request, null, 1));
+
+            if (!data || Object.keys(data).length === 0) {
+                console.log('Данные еще не загружены');
+                params.success({ rowData: [] });
+                return;
+            }
+
+            const { groupKeys, startRow, endRow } = params.request;
+            const level = groupKeys.length;
+
+            console.log('Запрошен уровень:', level, 'groupKeys:', groupKeys, 'startRow:', startRow, 'endRow:', endRow);
+            let allFilteredRows: TreeNode[];
+            if (level === 0) {
+                // Корневой уровень - возвращаем все узлы верхнего уровня (поставщики)
+                allFilteredRows = Object.values(data).filter((node: TreeNode) => node.level === Levels.supplier);
+            } else {
+                const parentId = groupKeys[groupKeys.length - 1];
+                let parentNode: TreeNode | undefined = data[parentId];
+                const childIds = parentNode.children as string[];
+                allFilteredRows = childIds.map((id) => data[id]).filter(Boolean);
+            }
+
+            // Нарезаем данные согласно startRow и endRow для пагинации
+            const rowsToReturn = allFilteredRows.slice(startRow, endRow);
+            const totalRowCount = allFilteredRows.length;
+
+            console.log('Всего строк доступно:', totalRowCount, 'Возвращается строк:', rowsToReturn.length, `(${startRow}-${endRow})`);
+
+            params.success({
+                rowData: rowsToReturn,
+                rowCount: totalRowCount,
+            });
+        },
+    });
+
+    // Обновляем datasource при изменении rowData
+    useEffect(() => {
+        if (gridApiRef.current) {
+            const datasource = createDatasource(rowData);
+            gridApiRef.current.setGridOption('serverSideDatasource', datasource);
+        }
+    }, [rowData]);
+
     const onGridReady = (event: GridReadyEvent) => {
-        const datasource: IServerSideDatasource<any> = {
-            getRows(params) {
-                console.log('Запрос getRows:', JSON.stringify(params.request, null, 1));
-
-                if (!rowData || Object.keys(rowData).length === 0) {
-                    console.log('Данные еще не загружены');
-                    params.success({ rowData: [] });
-                    return;
-                }
-
-                const { groupKeys, startRow, endRow } = params.request;
-                const level = groupKeys.length;
-
-                console.log('Запрошен уровень:', level, 'groupKeys:', groupKeys, 'startRow:', startRow, 'endRow:', endRow);
-                let allFilteredRows: TreeNode[];
-                if (level === 0) {
-                    // Корневой уровень - возвращаем все узлы верхнего уровня (поставщики)
-                    allFilteredRows = Object.values(rowData).filter((node: TreeNode) => node.level === Levels.supplier);
-                } else {
-                    const parentId = groupKeys[groupKeys.length - 1];
-                    let parentNode: TreeNode | undefined = rowData[parentId];
-                    const childIds = parentNode.children as string[];
-                    allFilteredRows = childIds.map((id) => rowData[id]).filter(Boolean);
-                }
-
-                // Нарезаем данные согласно startRow и endRow для пагинации
-                const rowsToReturn = allFilteredRows.slice(startRow, endRow);
-                const totalRowCount = allFilteredRows.length;
-
-                console.log('Всего строк доступно:', totalRowCount, 'Возвращается строк:', rowsToReturn.length, `(${startRow}-${endRow})`);
-
-                params.success({
-                    rowData: rowsToReturn,
-                    rowCount: totalRowCount,
-                });
-            },
-        };
-
+        gridApiRef.current = event.api;
+        const datasource = createDatasource(rowData);
         event.api.setGridOption('serverSideDatasource', datasource);
     };
 
     return (
         <div className='stats-grid ag-theme-balham'>
             <h2>Данные за последние 30 дней</h2>
-            {rowData && (
-                <AgGridReact
-                    rowModelType='serverSide'
-                    onGridReady={onGridReady}
-                    treeData={true}
-                    isServerSideGroup={(dataItem: TreeNode) => dataItem.children && dataItem.children.length > 0}
-                    getServerSideGroupKey={(dataItem: TreeNode) => dataItem.id}
-                    autoGroupColumnDef={{
-                        headerName: 'Hierarchy',
-                        menuTabs: ['columnsMenuTab'],
-                        pinned: 'left',
-                        valueGetter: (params) => {
-                            const data = params.data as TreeNode;
-                            if (!data) return '';
+            <AgGridReact
+                rowModelType='serverSide'
+                onGridReady={onGridReady}
+                treeData={true}
+                isServerSideGroup={(dataItem: TreeNode) => dataItem.children && dataItem.children.length > 0}
+                getServerSideGroupKey={(dataItem: TreeNode) => dataItem.id}
+                autoGroupColumnDef={{
+                    headerName: 'Hierarchy',
+                    menuTabs: ['columnsMenuTab'],
+                    pinned: 'left',
+                    valueGetter: (params) => {
+                        const data = params.data as TreeNode;
+                        if (!data) return '';
 
-                            // Отображаем соответствующее поле в зависимости от уровня узла
-                            switch (data.level) {
-                                case Levels.supplier:
-                                    return data.supplier;
-                                case Levels.brand:
-                                    return data.brand;
-                                case Levels.type:
-                                    return data.type;
-                                case Levels.article:
-                                    return data.article;
-                                default:
-                                    return '';
-                            }
-                        },
-                        cellRendererParams: {
-                            suppressCount: true,
-                        },
-                    }}
-                    theme={themeBalham.withParams({
-                        backgroundColor: 'var(--bs-body-bg)',
-                        foregroundColor: 'var(--bs-body-color)',
-                        browserColorScheme: 'light',
-                    })}
-                    columnDefs={columnDefs}
-                ></AgGridReact>
-            )}
+                        // Отображаем соответствующее поле в зависимости от уровня узла
+                        switch (data.level) {
+                            case Levels.supplier:
+                                return data.supplier;
+                            case Levels.brand:
+                                return data.brand;
+                            case Levels.type:
+                                return data.type;
+                            case Levels.article:
+                                return data.article;
+                            default:
+                                return '';
+                        }
+                    },
+                    cellRendererParams: {
+                        suppressCount: true,
+                    },
+                }}
+                theme={themeBalham.withParams({
+                    backgroundColor: 'var(--bs-body-bg)',
+                    foregroundColor: 'var(--bs-body-color)',
+                    browserColorScheme: 'light',
+                })}
+                columnDefs={columnDefs}
+            ></AgGridReact>
         </div>
     );
 }
