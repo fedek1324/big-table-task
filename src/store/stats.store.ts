@@ -1,5 +1,6 @@
 import { createStore, createEvent, createEffect, sample } from 'effector';
 import { IStatItem } from '../types/stats.types';
+import { Metrics } from '../types/metrics.types';
 import { TreeNode } from '../types/tree.types';
 import { STATS_API } from '../api/stats.api';
 import HandleDataWorker from '../features/stats/helpers/handleDataWorker?worker';
@@ -9,7 +10,7 @@ import HandleDataWorker from '../features/stats/helpers/handleDataWorker?worker'
 /**
  * Устанавливает текущую метрику (вызывается из компонента StatsGrid)
  */
-export const setMetric = createEvent<string>();
+export const setMetric = createEvent<Metrics>();
 
 /**
  * Событие получения данных от worker-а
@@ -39,7 +40,7 @@ export const loadServerDataFx = createEffect(async () => {
  * Отправляет данные в worker для обработки
  */
 export const sendToWorkerFx = createEffect(
-    ({ worker, data, metric, requestId }: { worker: Worker; data: IStatItem[]; metric: string; requestId: number }) => {
+    ({ worker, data, metric, requestId }: { worker: Worker; data: IStatItem[]; metric: Metrics; requestId: number }) => {
         console.log('Отправка данных в worker, метрика:', metric, 'requestId:', requestId);
         worker.postMessage({ data, metric, requestId });
     },
@@ -51,7 +52,7 @@ export const sendToWorkerFx = createEffect(
  * Текущая метрика (cost, revenue, orders, returns, buyouts)
  * Изначально null, устанавливается из компонента
  */
-export const $metric = createStore<string | null>(null).on(setMetric, (_, metric) => metric);
+export const $metric = createStore<Metrics | null>(null).on(setMetric, (_, metric) => metric);
 
 /**
  * Данные с сервера (сырые данные из API)

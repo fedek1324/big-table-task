@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ColDef, GridReadyEvent, IServerSideDatasource, themeBalham } from 'ag-grid-enterprise';
 import { useSearchParams } from 'react-router-dom';
 import { useUnit } from 'effector-react';
-import { Metrics } from '../../../types/metrics.types';
+import { Metrics, isMetric } from '../../../types/metrics.types';
 import { Levels } from '../../../types/levels.types';
 import { TreeNode } from '../../../types/tree.types';
 import './stats-grid.scss';
@@ -13,7 +13,8 @@ import { $rowData, setMetric } from '../../../store/stats.store';
 export function StatsGrid() {
     const [columnDefs, setColumnDefs] = useState<ColDef<TreeNode>[]>([]);
     const [searchParams] = useSearchParams();
-    const metric = searchParams.get('metric') ?? Metrics.cost;
+    const metricParam = searchParams.get('metric');
+    const metric = metricParam && isMetric(metricParam) ? metricParam : Metrics.cost;
     const rowData = useUnit($rowData);
 
     // Устанавливаем метрику из URL параметров в store
