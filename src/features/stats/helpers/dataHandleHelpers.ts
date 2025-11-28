@@ -90,7 +90,7 @@ export function filterLast30Days(items: IStatItem[]): FilteredStatItem[] {
  * @param items - плоский массив IStatItem или FilteredStatItem
  * @param metric - метрика для агрегации
  */
-export function buildTreeWithAggregation(items: FilteredStatItem[], metric: string): Map<string, TreeNode> {
+export function buildTreeWithAggregation(items: FilteredStatItem[], metric: Metrics): Map<string, TreeNode> {
     const nodesMap = new Map<string, TreeNode>();
     const daysCount = items[0]?.cost.length || 30;
 
@@ -142,6 +142,7 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
         const articleNode: ArticleNode = {
             id: articleId,
             level: Levels.article,
+            metric,
             children: [],
             supplier: item.supplier,
             brand: item.brand,
@@ -190,6 +191,7 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
             const typeNode: GoodTypeNode = {
                 id: nodeId,
                 level: Levels.type,
+                metric,
                 children: Array.from(children),
                 supplier,
                 brand,
@@ -218,6 +220,7 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
             const brandNode: BrandNode = {
                 id: nodeId,
                 level: Levels.brand,
+                metric,
                 children: Array.from(children),
                 supplier,
                 brand,
@@ -243,6 +246,7 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
             const supplierNode: SupplierNode = {
                 id: nodeId,
                 level: Levels.supplier,
+                metric,
                 children: Array.from(children),
                 supplier,
                 metricData: agg.metricData,
@@ -287,7 +291,7 @@ export function getMetricData(item: FilteredStatItem, metric: string): (number |
 /**
  * Главная функция обработки данных - объединяет все шаги
  */
-export function processData(data: IStatItem[], metric: string, requestId: number) {
+export function processData(data: IStatItem[], metric: Metrics, requestId: number) {
     const filteredData = filterLast30Days(data);
     const treeMap = buildTreeWithAggregation(filteredData, metric);
     const treeObject = Object.fromEntries(treeMap);

@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import { processData } from '../features/stats/helpers/dataHandleHelpers';
+import { Metrics } from '../types/metrics.types';
 import '../lib/ag-grid';
 
 // Мокаем Worker глобально перед загрузкой любых модулей
@@ -12,7 +13,7 @@ class MockWorker {
     postMessage(msg: any) {
         const { data, metric, requestId } = msg;
         try {
-            const result = processData(data, metric, requestId);
+            const result = processData(data, metric as Metrics, requestId);
             // Эмулируем асинхронное поведение web worker
             setTimeout(() => {
                 if (this.onmessage) this.onmessage({ data: result } as MessageEvent);

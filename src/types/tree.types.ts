@@ -1,4 +1,5 @@
 import { Levels } from './levels.types';
+import { Metrics } from './metrics.types';
 
 // Базовый интерфейс для всех узлов дерева
 export interface TreeNodeBase {
@@ -7,6 +8,9 @@ export interface TreeNodeBase {
 
     // Уровень в иерархии
     level: Levels;
+
+    // Метрика, для которой созданы данные узла
+    metric: Metrics;
 
     // Массив ID дочерних узлов
     children: string[];
