@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { StatsGrid } from './stats-grid';
@@ -46,6 +46,8 @@ const createMockData = ({
     returns,
 });
 
+const noDataMessage = 'нет данных';
+
 const formatNumber = (numberStr: string): number => {
     // Remove spaces (thousand separators) and replace comma with dot (decimal separator)
     return Number(numberStr.replace(/\s/g, '').replace(',', '.'));
@@ -56,7 +58,16 @@ const compareDigitsCount = 3;
 describe('StatsGrid', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        // TODO Фиксируем дату для предсказуемых тестов: 28 ноября 2025
+        vi.setSystemTime(new Date('2025-11-28T00:00:00.000Z'));
     });
+
+    afterEach(() => {
+        // Возвращаем реальное время после каждого теста
+        vi.useRealTimers();
+    });
+
+    // РЕНДЕР
 
     it('should render table', async () => {
         // Подготавливаем мок-данные для этого теста
@@ -77,9 +88,6 @@ describe('StatsGrid', () => {
                 <StatsGrid />
             </MemoryRouter>,
         );
-
-        console.log('Table');
-        console.log(container.querySelector('.ag-root-wrapper'));
 
         await waitFor(
             () => {
@@ -127,14 +135,39 @@ describe('StatsGrid', () => {
         );
     });
 
-    it('should correctly display average cost data', async () => {
+    // COST
+
+    it('should not display cost sum', async () => {
         // Подготавливаем мок-данные для этого теста
         const testData = [
             createMockData({
                 article: 'TEST-001',
                 cost: Array(30).fill(100),
-                orders: Array(30).fill(10),
-                returns: Array(30).fill(2),
+            }),
+        ];
+
+        (STATS_API.getFull as any).mockResolvedValue(testData);
+        await loadServerDataFx();
+
+        const { container } = render(
+            <MemoryRouter initialEntries={['/stats?metric=cost']}>
+                <StatsGrid />
+            </MemoryRouter>,
+        );
+
+        // Проверяем что worker правильно агрегировал данные
+        await waitFor(() => {
+            const sumCells = container.querySelectorAll('[col-id="sum"]');
+            expect(sumCells[1].textContent).toBe('');
+        });
+    });
+
+    it('should correctly display average cost', async () => {
+        // Подготавливаем мок-данные для этого теста
+        const testData = [
+            createMockData({
+                article: 'TEST-001',
+                cost: Array(30).fill(100),
             }),
         ];
 
@@ -150,21 +183,18 @@ describe('StatsGrid', () => {
         );
 
         // Проверяем что worker правильно агрегировал данные
-        // Sum для cost должна быть (100 * 30 + 200 * 30) = 9000 для поставщика
         await waitFor(() => {
             const sumCells = container.querySelectorAll('[col-id="average"]');
             expect(formatNumber(sumCells[1].textContent)).toBeCloseTo(averageCost, compareDigitsCount);
         });
     });
 
-    it('should correctly display float average', async () => {
+    it('should correctly display float coast average', async () => {
         // Подготавливаем мок-данные для этого теста
         const testData = [
             createMockData({
                 article: 'TEST-001',
                 cost: [...Array(28).fill(0), 86320, 69013],
-                orders: Array(30).fill(10),
-                returns: Array(30).fill(2),
             }),
         ];
 
@@ -179,13 +209,217 @@ describe('StatsGrid', () => {
             </MemoryRouter>,
         );
 
-        // Проверяем что worker правильно агрегировал данные
-        // Sum для cost должна быть (100 * 30 + 200 * 30) = 9000 для поставщика
         await waitFor(() => {
             const sumCells = container.querySelectorAll('[col-id="average"]');
             expect(formatNumber(sumCells[1].textContent)).toBeCloseTo(averageCost, compareDigitsCount);
         });
     });
+
+    it('should correctly display coast average consider lastUpdate', async () => {
+        const tenDaysAgo = new Date();
+        tenDaysAgo.setDate(tenDaysAgo.getDay() - 10);
+
+        // Подготавливаем мок-данные для этого теста
+        const testData = [
+            createMockData({
+                article: 'TEST-001',
+                cost: Array(30).fill(100),
+                lastUpdate: tenDaysAgo.toISOString(),
+            }),
+        ];
+
+        // Считаем среднее не заполняя нулями даты до сегодня
+        const averageCost = 100;
+
+        (STATS_API.getFull as any).mockResolvedValue(testData);
+        await loadServerDataFx();
+
+        const { container } = render(
+            <MemoryRouter initialEntries={['/stats?metric=cost']}>
+                <StatsGrid />
+            </MemoryRouter>,
+        );
+
+        await waitFor(() => {
+            const sumCells = container.querySelectorAll('[col-id="average"]');
+            expect(formatNumber(sumCells[1].textContent)).toBeCloseTo(averageCost, compareDigitsCount);
+        });
+    });
+
+    it('should correctly display coast average consider lastUpdate', async () => {
+        const tenDaysAgo = new Date();
+        tenDaysAgo.setDate(tenDaysAgo.getDay() - 10);
+
+        // Подготавливаем мок-данные для этого теста
+        const testData = [
+            createMockData({
+                article: 'TEST-001',
+                cost: Array(30).fill(100),
+                lastUpdate: tenDaysAgo.toISOString(),
+            }),
+        ];
+
+        // Считаем среднее не заполняя нулями даты до сегодня
+        const averageCost = 100;
+
+        (STATS_API.getFull as any).mockResolvedValue(testData);
+        await loadServerDataFx();
+
+        const { container } = render(
+            <MemoryRouter initialEntries={['/stats?metric=cost']}>
+                <StatsGrid />
+            </MemoryRouter>,
+        );
+
+        await waitFor(() => {
+            const sumCells = container.querySelectorAll('[col-id="average"]');
+            expect(formatNumber(sumCells[1].textContent)).toBeCloseTo(averageCost, compareDigitsCount);
+        });
+    });
+
+    it('should correctly calculate coast average in supplier consider lastUpdate', async () => {
+        const tenDaysAgo = new Date();
+        tenDaysAgo.setDate(tenDaysAgo.getDay() - 10);
+
+        const twentyFiveDaysAgo = new Date();
+        twentyFiveDaysAgo.setDate(twentyFiveDaysAgo.getDay() - 25);
+
+        // Подготавливаем мок-данные для этого теста
+        const testData = [
+            createMockData({
+                article: 'TEST-001',
+                cost: Array(30).fill(50),
+                lastUpdate: tenDaysAgo.toISOString(),
+            }),
+            createMockData({
+                article: 'TEST-002',
+                cost: Array(30).fill(100),
+                lastUpdate: twentyFiveDaysAgo.toISOString(),
+            }),
+        ];
+
+        // Считаем среднее учитывая количество данных за каждый товар
+        const averageCost = (50 * 20 + 100 * 5) / (20 + 5); // 60
+
+        (STATS_API.getFull as any).mockResolvedValue(testData);
+        await loadServerDataFx();
+
+        const { container } = render(
+            <MemoryRouter initialEntries={['/stats?metric=cost']}>
+                <StatsGrid />
+            </MemoryRouter>,
+        );
+
+        await waitFor(() => {
+            const sumCells = container.querySelectorAll('[col-id="average"]');
+            expect(formatNumber(sumCells[1].textContent)).toBeCloseTo(averageCost, compareDigitsCount);
+        });
+    });
+
+    // Обработка случаев когда нет данных
+
+    it('should display no data in supplier on average if there is no data for last 30 days', async () => {
+        const hundredDaysAgo = new Date();
+        hundredDaysAgo.setDate(hundredDaysAgo.getDay() - 100);
+
+        // Подготавливаем мок-данные для этого теста
+        const testData = [
+            createMockData({
+                article: 'TEST-001',
+                cost: Array(30).fill(50),
+                lastUpdate: hundredDaysAgo.toISOString(),
+            }),
+            createMockData({
+                article: 'TEST-002',
+                cost: Array(30).fill(100),
+                lastUpdate: hundredDaysAgo.toISOString(),
+            }),
+        ];
+
+        const averageCost = noDataMessage;
+
+        (STATS_API.getFull as any).mockResolvedValue(testData);
+        await loadServerDataFx();
+
+        const { container } = render(
+            <MemoryRouter initialEntries={['/stats?metric=cost']}>
+                <StatsGrid />
+            </MemoryRouter>,
+        );
+
+        await waitFor(() => {
+            const sumCells = container.querySelectorAll('[col-id="average"]');
+            expect(formatNumber(sumCells[1].textContent)).toBe(averageCost);
+        });
+    });
+
+    // Тесты на значения колонок с датами
+
+    it('should correctly calculate coast average in supplier consider lastUpdate in date columns', async () => {
+        const tenDaysAgo = new Date();
+        tenDaysAgo.setDate(tenDaysAgo.getDay() - 10);
+
+        const twentyDaysAgo = new Date();
+        twentyDaysAgo.setDate(twentyDaysAgo.getDay() - 20);
+
+        const twentyFiveDaysAgo = new Date();
+        twentyFiveDaysAgo.setDate(twentyFiveDaysAgo.getDay() - 25);
+
+        // Подготавливаем мок-данные для этого теста
+        const testData = [
+            createMockData({
+                article: 'TEST-001',
+                cost: Array(30).fill(50),
+                lastUpdate: tenDaysAgo.toISOString(),
+            }),
+            createMockData({
+                article: 'TEST-002',
+                cost: Array(30).fill(60),
+                lastUpdate: twentyDaysAgo.toISOString(),
+            }),
+            createMockData({
+                article: 'TEST-003',
+                cost: Array(30).fill(100),
+                lastUpdate: twentyFiveDaysAgo.toISOString(),
+            }),
+        ];
+
+        const columnData: Array<number | typeof noDataMessage> = [
+            ...new Array(10).fill(noDataMessage), // дни 0-9: нет данных
+            ...new Array(10).fill(50), // дни 10-19: только товар 1 (50/1 = 50)
+            ...new Array(5).fill(55), // дни 20-24: товар 1+2 ((50+60)/2 = 55)
+            ...new Array(5).fill(70), // дни 25-29: товар 1+2+3 ((50+60+100)/3 = 70)
+        ];
+
+        (STATS_API.getFull as any).mockResolvedValue(testData);
+        await loadServerDataFx();
+
+        const { container } = render(
+            <MemoryRouter initialEntries={['/stats?metric=cost']}>
+                <StatsGrid />
+            </MemoryRouter>,
+        );
+
+        await waitFor(() => {
+            // Проверяем все 30 колонок с датами
+            for (let i = 0; i < 30; i++) {
+                const cells = container.querySelectorAll(`[col-id="${i}"]`);
+                const supplierCell = cells[1]; // индекс 1 - строка поставщика
+                const expectedValue = columnData[i];
+
+                if (expectedValue === noDataMessage) {
+                    expect(supplierCell.textContent).toBe(noDataMessage);
+                } else {
+                    expect(formatNumber(supplierCell.textContent || '0')).toBeCloseTo(expectedValue, compareDigitsCount);
+                }
+            }
+        });
+    });
+
+    // TODO? добавить тесты на бренды?
+    // Добавить тесты когда товары по разным брендам?
+
+    // REVENUE
 
     it('should correctly calculate revenue sum and average', async () => {
         // Подготавливаем комплексный тест кейс с множественными товарами и разными стоимостями
