@@ -1,4 +1,5 @@
-import { IStatItem, Levels } from '../../../types/stats.types';
+import { IStatItem } from '../../../types/stats.types';
+import { Levels } from '../../../types/levels.types';
 import { TreeNode, SupplierNode, BrandNode, GoodTypeNode, ArticleNode, createNodeId } from '../../../types/tree.types';
 import { Metrics } from '../../../types/metrics.types';
 

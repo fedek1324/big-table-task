@@ -1,5 +1,6 @@
 import Dixie, { Table } from 'dexie';
-import { IStatItem, Levels } from '../types/stats.types';
+import { IStatItem } from '../types/stats.types';
+import { Levels } from '../types/levels.types';
 
 export class AdStatsDatabase extends Dixie {
     [Levels.supplier]!: Table<IStatItem>;

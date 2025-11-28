@@ -1,4 +1,4 @@
-import { Levels } from './stats.types';
+import { Levels } from './levels.types';
 
 // Базовый интерфейс для всех узлов дерева
 export interface TreeNodeBase {

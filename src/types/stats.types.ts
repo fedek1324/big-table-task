@@ -1,11 +1,4 @@
-export enum Levels {
-    type = 'type',
-    article = 'article',
-    brand = 'brand',
-    supplier = 'supplier',
-}
-
-export const ORDERED_LEVELS = [Levels.supplier, Levels.brand, Levels.type, Levels.article] as const;
+export { Levels, ORDERED_LEVELS } from './levels.types';
 
 // данные с бэкенда
 interface IStatItemRaw {

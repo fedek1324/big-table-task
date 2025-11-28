@@ -4,7 +4,7 @@ import { ColDef, GridReadyEvent, IServerSideDatasource, themeBalham } from 'ag-g
 import { useSearchParams } from 'react-router-dom';
 import { useUnit } from 'effector-react';
 import { Metrics } from '../../../types/metrics.types';
-import { Levels } from '../../../types/stats.types';
+import { Levels } from '../../../types/levels.types';
 import { TreeNode } from '../../../types/tree.types';
 import './stats-grid.scss';
 import { statsGridColumnsFactory } from './stats-grid.columns';
