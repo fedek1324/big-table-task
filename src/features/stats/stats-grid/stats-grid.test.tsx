@@ -452,6 +452,7 @@ describe('StatsGrid', () => {
                 cost: costData,
                 orders: ordersData,
                 returns: returnsData,
+                lastUpdate: new Date().toISOString(),
             }),
         ];
         (STATS_API.getFull as any).mockResolvedValue(testData);
@@ -477,12 +478,10 @@ describe('StatsGrid', () => {
             () => {
                 const sumCells = container.querySelectorAll('[col-id="sums"]');
                 expect(sumCells.length).toBeGreaterThan(0);
-                // sum(revenue) = sum of cost[i] * (orders[i] - returns[i]) for all 30 days = 74948.75
                 expect(formatNumber(sumCells[1].textContent || '0')).toBeCloseTo(sum, compareDigitsCount);
 
                 const averageCells = container.querySelectorAll('[col-id="average"]');
                 expect(averageCells.length).toBeGreaterThan(0);
-                // sum(revenue) = sum of cost[i] * (orders[i] - returns[i]) for all 30 days = 74948.75
                 expect(formatNumber(averageCells[1].textContent || '0')).toBeCloseTo(average, compareDigitsCount);
             },
             { timeout: 5000 },
@@ -566,15 +565,106 @@ describe('StatsGrid', () => {
             .fill(0)
             .map((_, i) => 5 + (i % 8)); // Возвраты варьируются от 5 до 12
 
+        const testData = [
+            createMockData({
+                supplier: 'Premium Supplier',
+                brand: 'Premium Brand',
+                article: 'PREM-001',
+                cost: costData,
+                orders: ordersData,
+                returns: returnsData,
+            }),
+            createMockData({
+                supplier: 'Premium Supplier',
+                brand: 'Premium Brand',
+                article: 'PREM-002',
+                cost: costData,
+                orders: ordersData,
+                returns: returnsData,
+            }),
+            createMockData({
+                supplier: 'Premium Supplier',
+                brand: 'Premium Brand',
+                article: 'PREM-003',
+                cost: costData,
+                orders: ordersData,
+                returns: returnsData,
+            }),
+        ];
+
         // Ожидаемое значение revenue:
         // revenue[i] = cost[i] * (orders[i] - returns[i]) for each day
         // Пример: day 0: 150.50 * (20-5) = 150.50 * 15 = 2257.50
         //         day 1: 150.75 * (21-6) = 150.75 * 15 = 2261.25
         //         ...
         // sum(revenue) для всех 30 дней = 74948.75
-        // average(revenue) 2498.2916666666665
         const totalSum = 74948.75 * 3;
-        const totalAverage = 2498.2916666666665;
+        // средним на этом уровне (поставщика) будет средняя прибыль за день
+        const totalAverage = totalSum / 30; // 7 494,875
+
+        (STATS_API.getFull as any).mockResolvedValue(testData);
+        await loadServerDataFx();
+
+        const { container } = render(
+            <MemoryRouter initialEntries={['/stats?metric=revenue']}>
+                <StatsGrid />
+            </MemoryRouter>,
+        );
+
+        // Проверяем что таблица отрендерилась с правильными данными
+        await waitFor(
+            () => {
+                const grid = container.querySelector('.ag-root-wrapper');
+                expect(grid?.textContent).toContain('Premium Supplier');
+            },
+            { timeout: 5000 },
+        );
+
+        // // Проверяем что сумма revenue вычислена правильно
+        await waitFor(
+            () => {
+                const sumCells = container.querySelectorAll('[col-id="sums"]');
+                expect(sumCells.length).toBeGreaterThan(0);
+                // sum(revenue) = sum of cost[i] * (orders[i] - returns[i]) for all 30 days = 74948.75
+                expect(formatNumber(sumCells[1].textContent || '0')).toBeCloseTo(totalSum, compareDigitsCount);
+
+                const averageCells = container.querySelectorAll('[col-id="average"]');
+                expect(averageCells.length).toBeGreaterThan(0);
+                // sum(revenue) = sum of cost[i] * (orders[i] - returns[i]) for all 30 days = 74948.75
+                expect(formatNumber(averageCells[1].textContent || '0')).toBeCloseTo(totalAverage, compareDigitsCount);
+            },
+            { timeout: 5000 },
+        );
+    });
+
+    // По прибыли поставщика среднее считаем только учитывая дни когда есть данные
+    // Я понял что на уровне поставщика мы считаем среднюю прибыль за день,
+    // на уровне артикула мы считаем среднюю прибыль учитывая только дни когда есть данные
+    //  но у поставщика
+    // мы берём сумму и делим на 30? или считаем учитывая только дни когда есть данные?
+    // например это может быть 28 дней. К тому же получается что
+    // если у поставщика 10 товаров но по первому дню только у одного товара есть данные
+    // то средняя прибыль за день будет прибылью этого товара
+    // то есть пример прибылей такой
+    // 1 артикул ["нет данных" * 5, 10 * 25];
+    // 2 артикул ["нет данных" * 10, 20 * 20];
+    // Как почитать можно сложить прибыли по дням
+    // как 0 * 5, 10 * 5, 30 * 20 и поделить либо на 30 либо на 25
+    // можно взять среднюю прибыль в принципе
+    // как (10 * 25 + 20 * 20) / (20 + 25) но это не то тк не по дням
+
+    it('should correctly calculate average for multiple goods consider count of days with data', async () => {
+        // Подготавливаем комплексный тест кейс с множественными товарами и разными стоимостями
+        // revenue = cost * buyouts = cost * (orders - returns)
+        const costData = Array(30)
+            .fill(0)
+            .map((_, i) => 150.5 + i * 0.25); // Цены варьируются от 150.50 до 157.75
+        const ordersData = Array(30)
+            .fill(0)
+            .map((_, i) => 20 + (i % 10)); // Заказы варьируются от 20 до 29
+        const returnsData = Array(30)
+            .fill(0)
+            .map((_, i) => 5 + (i % 8)); // Возвраты варьируются от 5 до 12
 
         const testData = [
             createMockData({
@@ -602,6 +692,17 @@ describe('StatsGrid', () => {
                 returns: returnsData,
             }),
         ];
+
+        // Ожидаемое значение revenue:
+        // revenue[i] = cost[i] * (orders[i] - returns[i]) for each day
+        // Пример: day 0: 150.50 * (20-5) = 150.50 * 15 = 2257.50
+        //         day 1: 150.75 * (21-6) = 150.75 * 15 = 2261.25
+        //         ...
+        // sum(revenue) для всех 30 дней = 74948.75
+        const totalSum = 74948.75 * 3;
+        // средним на этом уровне (поставщика) будет средняя прибыль за день
+        const totalAverage = totalSum / 30; // 7 494,875
+
         (STATS_API.getFull as any).mockResolvedValue(testData);
         await loadServerDataFx();
 

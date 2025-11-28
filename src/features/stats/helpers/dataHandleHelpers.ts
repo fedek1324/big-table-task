@@ -134,6 +134,9 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
         const metricData = getMetricData(item, metric);
         const sum = metricData.reduce((acc, val) => (acc ?? 0) + (val ?? 0), 0) ?? 0;
 
+        // Считаем количество дней с реальными данными (не undefined)
+        const validDaysCount = metricData.filter((val) => val !== undefined).length;
+
         // Создаем узел артикула
         const articleNode: ArticleNode = {
             id: articleId,
@@ -145,7 +148,7 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
             article: item.article,
             metricData,
             sum,
-            average: sum / daysCount,
+            average: validDaysCount > 0 ? sum / validDaysCount : 0,
         };
         nodesMap.set(articleId, articleNode);
 
@@ -180,6 +183,9 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
             const agg = aggregationMap.get(nodeId)!;
             const sum = agg.metricData.reduce((acc, val) => (acc ?? 0) + (val ?? 0), 0) ?? 0;
 
+            // Считаем количество дней с реальными данными (не undefined)
+            const validDaysCount = agg.metricData.filter((val) => val !== undefined).length;
+
             const typeNode: GoodTypeNode = {
                 id: nodeId,
                 level: 2,
@@ -189,7 +195,7 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
                 type,
                 metricData: agg.metricData,
                 sum,
-                average: sum / (daysCount * agg.count), // Среднее на один артикул в день
+                average: validDaysCount > 0 ? sum / validDaysCount : 0,
             };
             nodesMap.set(nodeId, typeNode);
         }
@@ -205,6 +211,9 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
             const agg = aggregationMap.get(nodeId)!;
             const sum = agg.metricData.reduce((acc, val) => (acc ?? 0) + (val ?? 0), 0) ?? 0;
 
+            // Считаем количество дней с реальными данными (не undefined)
+            const validDaysCount = agg.metricData.filter((val) => val !== undefined).length;
+
             const brandNode: BrandNode = {
                 id: nodeId,
                 level: 1,
@@ -213,7 +222,7 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
                 brand,
                 metricData: agg.metricData,
                 sum,
-                average: sum / (daysCount * agg.count), // Среднее на один артикул в день
+                average: validDaysCount > 0 ? sum / validDaysCount : 0,
             };
             nodesMap.set(nodeId, brandNode);
         }
@@ -227,6 +236,9 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
             const agg = aggregationMap.get(nodeId)!;
             const sum = agg.metricData.reduce((acc, val) => (acc ?? 0) + (val ?? 0), 0) ?? 0;
 
+            // Считаем количество дней с реальными данными (не undefined)
+            const validDaysCount = agg.metricData.filter((val) => val !== undefined).length;
+
             const supplierNode: SupplierNode = {
                 id: nodeId,
                 level: 0,
@@ -234,7 +246,7 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: stri
                 supplier,
                 metricData: agg.metricData,
                 sum,
-                average: sum / (daysCount * agg.count), // Среднее на один артикул в день
+                average: validDaysCount > 0 ? sum / validDaysCount : 0,
             };
             nodesMap.set(nodeId, supplierNode);
         }
