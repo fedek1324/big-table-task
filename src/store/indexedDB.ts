@@ -2,23 +2,22 @@ import { openDB, IDBPDatabase } from 'idb';
 import { Metrics } from '../types/metrics.types';
 import { TreeNode } from '../types/tree.types';
 
-// Интерфейс для хранимых данных
-export interface MetricsDataRecord {
-    treeData: Record<string, TreeNode>;
-    timestamp: number;
-}
-
 // Схема базы данных
 interface StatsDB {
     metricsData: {
         key: Metrics;
-        value: MetricsDataRecord;
+        value: Record<string, TreeNode>;
+    };
+    metricsTimestamps: {
+        key: Metrics;
+        value: number;
     };
 }
 
 const DB_NAME = 'statsDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'metricsData';
+const TIMESTAMPS_STORE_NAME = 'metricsTimestamps';
 
 /**
  * Инициализирует и возвращает экземпляр базы данных
@@ -29,6 +28,10 @@ export async function initDB(): Promise<IDBPDatabase<StatsDB>> {
             if (!db.objectStoreNames.contains(STORE_NAME)) {
                 db.createObjectStore(STORE_NAME);
                 console.log('Object store "metricsData" создан');
+            }
+            if (!db.objectStoreNames.contains(TIMESTAMPS_STORE_NAME)) {
+                db.createObjectStore(TIMESTAMPS_STORE_NAME);
+                console.log('Object store "metricsTimestamps" создан');
             }
         },
         blocked() {
@@ -52,21 +55,16 @@ export async function saveMetricData(
     treeData: Record<string, TreeNode>,
     timestamp: number,
 ): Promise<void> {
-    const record: MetricsDataRecord = {
-        treeData,
-        timestamp,
-    };
-
     console.time('saveToDB');
-    await db.put(STORE_NAME, record, metric);
+    await db.put(STORE_NAME, treeData, metric);
+    await db.put(TIMESTAMPS_STORE_NAME, timestamp, metric);
     console.timeEnd('saveToDB');
-    console.log(`Данные для метрики "${metric}" сохранены в IndexedDB`);
 }
 
 /**
  * Получает данные для метрики из IndexedDB
  */
-export async function getMetricData(db: IDBPDatabase<StatsDB>, metric: Metrics): Promise<MetricsDataRecord | null> {
+export async function getMetricData(db: IDBPDatabase<StatsDB>, metric: Metrics): Promise<Record<string, TreeNode> | null> {
     console.time('getFromDB');
     const record = await db.get(STORE_NAME, metric);
     console.timeEnd('getFromDB');
@@ -78,4 +76,12 @@ export async function getMetricData(db: IDBPDatabase<StatsDB>, metric: Metrics):
 
     console.log(`Данных для метрики "${metric}" в IndexedDB нет`);
     return null;
+}
+
+/**
+ * Получает timestamp для метрики из IndexedDB
+ */
+export async function getMetricTimestamp(db: IDBPDatabase<StatsDB>, metric: Metrics): Promise<number | null> {
+    const timestamp = await db.get(TIMESTAMPS_STORE_NAME, metric);
+    return timestamp || null;
 }

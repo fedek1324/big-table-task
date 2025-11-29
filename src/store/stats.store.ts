@@ -4,19 +4,27 @@ import { Metrics } from '../types/metrics.types';
 import { TreeNode } from '../types/tree.types';
 import { STATS_API } from '../api/stats.api';
 import HandleDataWorker from '../features/stats/helpers/handleDataWorker?worker';
-import { initDB, saveMetricData, getMetricData } from './indexedDB';
+import { initDB, saveMetricData, getMetricData, getMetricTimestamp } from './indexedDB';
 import { isSameDay } from '../helpers/date.helpers';
 
 const indexedDB = await initDB();
 
 // Алгоритм
+// Первая отрисовка с данными метрики
 // При загрузке компонента с таблицей в стор устанавливается метрика
 // При установке метрики проверяем кэш с данными по метрике, если кэш есть
-// Кладём данные в стор rowData и отрисовываем
-// Если кэша нет, то проверяем, если ли данные сервера в сторе,
-// если нет, подгружаем данные с сервера и сохраняем в стор $serverData
-// После того как данные будут загружены агрегируем с помощью воркера и кладём в $rowData
+// Кладём данные в стор $rowData и отрисовываем таблицу
+// Если кэша нет, то проверяем, если ли данные сервера в сторе $serverData,
+// если нет, подгружаем данные с сервера и сохраняем в стор
+// После того как данные $serverData будут загружены агрегируем с помощью воркера и кладём в $rowData
 // (затирая данные стора по прежней метрике)
+
+// Подгрузка в лейзи
+// Когда выполняется либо loadFromCacheFx.doneData либо saveToIndexedDBFx.doneData
+// проверяем объект metricsTimestamps из IndexedDB и определяем данные каких метрик нужно обновить
+// отправляем сообщения в воркер с просьбой агрегировать каждую из нужных метрик
+// запросы воркер поставит в очередь
+// по итогу полученные данные будем устанавливать в IndexedDB в качестве кэша
 
 // ========== Events ==========
 
@@ -30,13 +38,14 @@ export const setMetric = createEvent<Metrics>();
  */
 export const workerMessageReceived = createEvent<{
     treeData: Record<string, TreeNode>;
+    metric: Metrics;
     requestId: number;
 }>();
 
 /**
- * Завершение работы worker-а
+ * Внутреннее событие для установки данных в $rowData
  */
-export const terminateWorker = createEvent();
+const setRowData = createEvent<Record<string, TreeNode>>();
 
 // ========== Effects ==========
 
@@ -64,7 +73,6 @@ export const sendToWorkerFx = createEffect(
  */
 export const saveToIndexedDBFx = createEffect(async ({ metric, treeData }: { metric: Metrics; treeData: Record<string, TreeNode> }) => {
     await saveMetricData(indexedDB, metric, treeData, Date.now());
-    console.log(`Данные для метрики "${metric}" сохранены в IndexedDB`);
 });
 
 /**
@@ -72,21 +80,79 @@ export const saveToIndexedDBFx = createEffect(async ({ metric, treeData }: { met
  * Проверяет актуальность кеша - данные должны быть загружены сегодня
  */
 export const loadFromCacheFx = createEffect(async (metric: Metrics) => {
-    const cached = await getMetricData(indexedDB, metric);
+    const timestamp = await getMetricTimestamp(indexedDB, metric);
 
-    if (!cached) {
+    if (!timestamp) {
         return null;
     }
 
     // Проверяем, что кеш создан сегодня (сравниваем даты в UTC)
-    if (!isSameDay(cached.timestamp, Date.now())) {
-        const cachedDate = new Date(cached.timestamp);
+    if (!isSameDay(timestamp, Date.now())) {
+        const cachedDate = new Date(timestamp);
         console.log(`Кеш для метрики "${metric}" устарел (создан ${cachedDate.toLocaleDateString()}), игнорируем`);
         return null;
     }
 
     console.log(`Кеш для метрики "${metric}" актуален (создан сегодня)`);
-    return cached;
+
+    // Загружаем данные
+    const treeData = await getMetricData(indexedDB, metric);
+    return treeData;
+});
+
+/**
+ * Предзагружает все метрики, кроме текущей
+ */
+export const preloadMetricsFx = createEffect(
+    async ({
+        currentMetric,
+        serverData,
+        worker,
+        requestId,
+    }: {
+        currentMetric: Metrics;
+        serverData: IStatItem[];
+        worker: Worker;
+        requestId: number;
+    }) => {
+        const allMetrics = Object.values(Metrics);
+        const metricsToPreload = allMetrics.filter((m) => m !== currentMetric);
+
+        console.log(`Предзагрузка: начало фоновой обработки метрик:`, metricsToPreload);
+
+        // Предзагружаем метрики последовательно с интервалом 3 секунды
+        let nThRequestId = requestId + 1;
+        for (const metric of metricsToPreload) {
+            // Проверяем, есть ли актуальный кэш
+            const timestamp = await getMetricTimestamp(indexedDB, metric);
+
+            if (timestamp && isSameDay(timestamp, Date.now())) {
+                console.log(`Предзагрузка: кэш для метрики "${metric}" актуален, пропускаем`);
+                continue;
+            }
+
+            // Ждем 3 секунды перед отправкой
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+
+            console.log('Отправка данных в worker, метрика:', metric, 'requestId:', nThRequestId);
+            worker.postMessage({ data: serverData, metric, requestId: nThRequestId });
+            nThRequestId++;
+        }
+    },
+);
+
+/**
+ * Запускает предзагрузку с проверкой наличия данных сервера
+ * Если данных нет - загружает их перед предзагрузкой
+ */
+export const startPreloadWithServerDataCheckFx = createEffect(async ({ serverData }: { serverData: IStatItem[] | null }) => {
+    // Если данных с сервера нет - загружаем их
+    if (!serverData || serverData.length === 0) {
+        console.log('Предзагрузка: загружаем данные с сервера для предзагрузки других метрик');
+        serverData = await STATS_API.getFull();
+    }
+
+    return serverData;
 });
 
 // ========== Stores ==========
@@ -95,7 +161,13 @@ export const loadFromCacheFx = createEffect(async (metric: Metrics) => {
  * Текущая метрика (cost, revenue, orders, returns, buyouts)
  * Изначально null, устанавливается из компонента
  */
-export const $metric = createStore<Metrics | null>(null).on(setMetric, (_, metric) => metric);
+export const $metric = createStore<Metrics | null>(null).on(setMetric, (state, metric) => {
+    // Если метрика не изменилась, не обновляем стор
+    if (state === metric) {
+        return state;
+    }
+    return metric;
+});
 
 /**
  * Данные с сервера (сырые данные из API)
@@ -107,14 +179,14 @@ export const $serverData = createStore<IStatItem[] | null>(null).on(loadServerDa
  * Хранится как объект { [nodeId]: TreeNode } для быстрого доступа по ID
  */
 export const $rowData = createStore<Record<string, TreeNode> | null>(null)
-    .on(workerMessageReceived, (_, { treeData }) => {
+    .on(setRowData, (_, treeData) => {
         console.log('Получены обработанные данные от worker, узлов:', Object.keys(treeData).length);
         return treeData;
     })
-    .on(loadFromCacheFx.doneData, (_, cached) => {
-        if (cached) {
-            console.log('Данные загружены из кеша IndexedDB, узлов:', Object.keys(cached.treeData).length);
-            return cached.treeData;
+    .on(loadFromCacheFx.doneData, (_, treeData) => {
+        if (treeData) {
+            console.log('Данные загружены из кеша IndexedDB, узлов:', Object.keys(treeData).length);
+            return treeData;
         }
         return null; // Если кеша нет, сбрасываем данные
     })
@@ -133,29 +205,37 @@ console.log('Инициализация worker');
 const handleDataWorker = new HandleDataWorker();
 
 handleDataWorker.onmessage = (e: MessageEvent) => {
-    const { treeData, requestId } = e.data;
+    const { treeData, requestId, metric } = e.data;
     console.log('Получено сообщение от worker, requestId:', requestId);
-    workerMessageReceived({ treeData, requestId });
+    workerMessageReceived({ treeData, requestId, metric });
 };
 
 handleDataWorker.onerror = (error: ErrorEvent) => {
     console.error('Ошибка worker:', error);
 };
 
-export const $worker = createStore<Worker>(handleDataWorker).on(terminateWorker, (worker) => {
-    console.log('Завершение работы worker');
-    worker.terminate();
-    return handleDataWorker;
-});
+export const $worker = createStore<Worker>(handleDataWorker);
 
 // ========== Logic (Samples) ==========
 
 /**
- * При установке метрики - пытаемся загрузить данные из кеша
+ * При изменении метрики - пытаемся загрузить данные из кеша
  */
 sample({
-    clock: setMetric,
+    clock: $metric,
+    filter: (metric) => metric !== null,
     target: loadFromCacheFx,
+});
+
+/**
+ * Обновляем $rowData только если данные от воркера пришли для текущей метрики
+ */
+sample({
+    clock: workerMessageReceived,
+    source: $metric,
+    filter: (currentMetric, { metric }) => currentMetric === metric,
+    fn: (_, { treeData }) => treeData,
+    target: setRowData,
 });
 
 /**
@@ -234,9 +314,7 @@ sample({
  */
 sample({
     clock: workerMessageReceived,
-    source: $metric,
-    filter: (metric) => metric !== null,
-    fn: (metric, { treeData }) => ({ metric: metric!, treeData }),
+    fn: ({ metric, treeData }) => ({ metric, treeData }),
     target: saveToIndexedDBFx,
 });
 
@@ -245,8 +323,58 @@ sample({
  */
 $requestId.on(sendToWorkerFx, (id) => id + 1);
 
+/**
+ * Запускаем фоновую предзагрузку после успешной загрузки из кэша (если данные найдены)
+ */
+sample({
+    clock: loadFromCacheFx.doneData,
+    source: $serverData,
+    filter: (_, cachedData) => cachedData !== null,
+    fn: (serverData) => ({
+        serverData,
+    }),
+    target: startPreloadWithServerDataCheckFx,
+});
+
+/**
+ * Запускаем фоновую предзагрузку после сохранения текущей метрики в кэш
+ */
+sample({
+    clock: saveToIndexedDBFx.done,
+    source: {
+        serverData: $serverData,
+        currentMetric: $metric,
+    },
+    filter: ({ currentMetric }, { params }) => currentMetric === params.metric,
+    fn: ({ serverData }) => ({
+        serverData,
+    }),
+    target: startPreloadWithServerDataCheckFx,
+});
+
+/**
+ * Запускаем агрегацию других метрик в воркере
+ */
+sample({
+    clock: startPreloadWithServerDataCheckFx.doneData,
+    source: {
+        metric: $metric,
+        worker: $worker,
+        requestId: $requestId,
+    },
+    filter: ({ metric }, serverData) => metric !== null && serverData !== null && serverData.length > 0,
+    fn: ({ metric, worker, requestId }, serverData) => ({
+        currentMetric: metric!,
+        serverData: serverData!,
+        worker,
+        requestId,
+    }),
+    target: preloadMetricsFx,
+});
+
 // ========== Initialization ==========
 
 // Данные загружаются по требованию при установке метрики
 // Если есть кеш - используется кеш
 // Если кеша нет - загружаются с сервера и обрабатываются в worker
+// После сохранения текущей метрики в кэш - в фоне предзагружаются остальные метрики

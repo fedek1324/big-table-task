@@ -10,6 +10,7 @@ onmessage = function (e) {
 
     postMessage({
         treeData: treeObject,
-        requestId,
+        requestId: requestId,
+        metric: metric,
     });
 };
