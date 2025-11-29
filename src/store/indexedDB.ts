@@ -57,7 +57,9 @@ export async function saveMetricData(
         timestamp,
     };
 
+    console.time('saveToDB');
     await db.put(STORE_NAME, record, metric);
+    console.timeEnd('saveToDB');
     console.log(`Данные для метрики "${metric}" сохранены в IndexedDB`);
 }
 
@@ -65,7 +67,9 @@ export async function saveMetricData(
  * Получает данные для метрики из IndexedDB
  */
 export async function getMetricData(db: IDBPDatabase<StatsDB>, metric: Metrics): Promise<MetricsDataRecord | null> {
+    console.time('getFromDB');
     const record = await db.get(STORE_NAME, metric);
+    console.timeEnd('getFromDB');
 
     if (record) {
         console.log(`Данные для метрики "${metric}" получены из IndexedDB`);

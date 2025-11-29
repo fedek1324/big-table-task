@@ -9,6 +9,15 @@ import { isSameDay } from '../helpers/date.helpers';
 
 const indexedDB = await initDB();
 
+// Алгоритм
+// При загрузке компонента с таблицей в стор устанавливается метрика
+// При установке метрики проверяем кэш с данными по метрике, если кэш есть
+// Кладём данные в стор rowData и отрисовываем
+// Если кэша нет, то проверяем, если ли данные сервера в сторе,
+// если нет, подгружаем данные с сервера и сохраняем в стор $serverData
+// После того как данные будут загружены агрегируем с помощью воркера и кладём в $rowData
+// (затирая данные стора по прежней метрике)
+
 // ========== Events ==========
 
 /**
@@ -53,12 +62,10 @@ export const sendToWorkerFx = createEffect(
 /**
  * Сохраняет обработанные данные в IndexedDB
  */
-export const saveToIndexedDBFx = createEffect(
-    async ({ metric, treeData }: { metric: Metrics; treeData: Record<string, TreeNode> }) => {
-        await saveMetricData(indexedDB, metric, treeData, Date.now());
-        console.log(`Данные для метрики "${metric}" сохранены в IndexedDB`);
-    },
-);
+export const saveToIndexedDBFx = createEffect(async ({ metric, treeData }: { metric: Metrics; treeData: Record<string, TreeNode> }) => {
+    await saveMetricData(indexedDB, metric, treeData, Date.now());
+    console.log(`Данные для метрики "${metric}" сохранены в IndexedDB`);
+});
 
 /**
  * Загружает данные для метрики из IndexedDB (кеш)
@@ -74,9 +81,7 @@ export const loadFromCacheFx = createEffect(async (metric: Metrics) => {
     // Проверяем, что кеш создан сегодня (сравниваем даты в UTC)
     if (!isSameDay(cached.timestamp, Date.now())) {
         const cachedDate = new Date(cached.timestamp);
-        console.log(
-            `Кеш для метрики "${metric}" устарел (создан ${cachedDate.toLocaleDateString()}), игнорируем`,
-        );
+        console.log(`Кеш для метрики "${metric}" устарел (создан ${cachedDate.toLocaleDateString()}), игнорируем`);
         return null;
     }
 
