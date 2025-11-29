@@ -292,9 +292,15 @@ export function getMetricData(item: FilteredStatItem, metric: string): (number |
  * Главная функция обработки данных - объединяет все шаги
  */
 export function processData(data: IStatItem[], metric: Metrics, requestId: number) {
+    console.time('filtering');
     const filteredData = filterLast30Days(data);
+    console.timeEnd('filtering');
+    console.time('Aggregating');
     const treeMap = buildTreeWithAggregation(filteredData, metric);
+    console.timeEnd('Aggregating');
+    console.time('From entries');
     const treeObject = Object.fromEntries(treeMap);
+    console.timeEnd('From entries');
 
     return {
         treeData: treeObject,

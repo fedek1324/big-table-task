@@ -32,10 +32,9 @@ export function StatsGrid() {
     // Создаем datasource на основе текущих данных
     const createDatasource = (data: Record<string, TreeNode> | null): IServerSideDatasource<any> => ({
         getRows(params) {
-            console.log('Запрос getRows:', JSON.stringify(params.request, null, 1));
+            // console.log('Запрос getRows:', JSON.stringify(params.request, null, 1));
 
             if (!data || Object.keys(data).length === 0) {
-                console.log('Данные еще не загружены');
                 params.success({ rowData: [] });
                 return;
             }
