@@ -50,10 +50,11 @@ export async function saveMetricData(
     db: IDBPDatabase<StatsDB>,
     metric: Metrics,
     treeData: Record<string, TreeNode>,
+    timestamp: number,
 ): Promise<void> {
     const record: MetricsDataRecord = {
         treeData,
-        timestamp: Date.now(),
+        timestamp,
     };
 
     await db.put(STORE_NAME, record, metric);

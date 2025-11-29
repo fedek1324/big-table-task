@@ -5,6 +5,7 @@ import { TreeNode } from '../types/tree.types';
 import { STATS_API } from '../api/stats.api';
 import HandleDataWorker from '../features/stats/helpers/handleDataWorker?worker';
 import { initDB, saveMetricData, getMetricData } from './indexedDB';
+import { isSameDay } from '../helpers/date.helpers';
 
 const indexedDB = await initDB();
 
@@ -54,16 +55,32 @@ export const sendToWorkerFx = createEffect(
  */
 export const saveToIndexedDBFx = createEffect(
     async ({ metric, treeData }: { metric: Metrics; treeData: Record<string, TreeNode> }) => {
-        await saveMetricData(indexedDB, metric, treeData);
+        await saveMetricData(indexedDB, metric, treeData, Date.now());
         console.log(`Данные для метрики "${metric}" сохранены в IndexedDB`);
     },
 );
 
 /**
  * Загружает данные для метрики из IndexedDB (кеш)
+ * Проверяет актуальность кеша - данные должны быть загружены сегодня
  */
 export const loadFromCacheFx = createEffect(async (metric: Metrics) => {
     const cached = await getMetricData(indexedDB, metric);
+
+    if (!cached) {
+        return null;
+    }
+
+    // Проверяем, что кеш создан сегодня (сравниваем даты в UTC)
+    if (!isSameDay(cached.timestamp, Date.now())) {
+        const cachedDate = new Date(cached.timestamp);
+        console.log(
+            `Кеш для метрики "${metric}" устарел (создан ${cachedDate.toLocaleDateString()}), игнорируем`,
+        );
+        return null;
+    }
+
+    console.log(`Кеш для метрики "${metric}" актуален (создан сегодня)`);
     return cached;
 });
 
