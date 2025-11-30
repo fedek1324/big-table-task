@@ -148,13 +148,32 @@ export const preloadMetricsFx = createEffect(
 
 /**
  * Запускает предзагрузку с проверкой наличия данных сервера
- * Если данных нет - загружает их перед предзагрузкой
+ * Если данных нет - сначала проверяет кэш всех метрик
+ * Загружает с сервера только если есть метрики без актуального кэша
  */
 export const startPreloadWithServerDataCheckFx = createEffect(async ({ serverData }: { serverData: IStatItem[] | null }) => {
-    // Если данных с сервера нет - загружаем их
+    // Если данных с сервера нет
     if (!serverData || serverData.length === 0) {
-        console.log('Предзагрузка: загружаем данные с сервера для предзагрузки других метрик');
-        serverData = await STATS_API.getFull();
+        // Проверяем, есть ли актуальные кэши для всех метрик
+        const allMetrics = Object.values(Metrics);
+        let allCached = true;
+
+        for (const metric of allMetrics) {
+            const timestamp = await getMetricTimestamp(indexedDB, metric);
+            if (!timestamp || !isSameDay(timestamp, Date.now())) {
+                allCached = false;
+                break;
+            }
+        }
+
+        // Загружаем только если есть метрики без актуального кэша
+        if (!allCached) {
+            console.log('Предзагрузка: есть метрики без кэша, загружаем данные с сервера');
+            serverData = await STATS_API.getFull();
+        } else {
+            console.log('Предзагрузка: все метрики уже в актуальном кэше, загрузка не требуется');
+            return null; // Не нужно ничего предзагружать
+        }
     }
 
     return serverData;
@@ -361,6 +380,7 @@ sample({
 
 /**
  * Запускаем агрегацию других метрик в воркере
+ * Только если есть данные для обработки (не все метрики закэшированы)
  */
 sample({
     clock: startPreloadWithServerDataCheckFx.doneData,
@@ -369,7 +389,16 @@ sample({
         worker: $worker,
         requestId: $requestId,
     },
-    filter: ({ metric }, serverData) => metric !== null && serverData !== null && serverData.length > 0,
+    filter: ({ metric }, serverData) => {
+        const hasMetric = metric !== null;
+        const hasData = serverData !== null && serverData.length > 0;
+
+        if (!hasData) {
+            console.log('Предзагрузка: все метрики закэшированы, обработка не требуется');
+        }
+
+        return hasMetric && hasData;
+    },
     fn: ({ metric, worker, requestId }, serverData) => ({
         currentMetric: metric!,
         serverData: serverData!,
