@@ -5,13 +5,19 @@ import { useSearchParams } from 'react-router-dom';
 import { useUnit } from 'effector-react';
 import { Metrics, isMetric } from '../../../types/metrics.types';
 import { Levels } from '../../../types/levels.types';
-import { TreeNode } from '../../../types/tree.types';
+import { MetricNodeData, MetricDataMap, getLevel } from '../../../types/metric.types';
 import './stats-grid.scss';
 import { statsGridColumnsFactory } from './stats-grid.columns';
 import { $rowData, setMetric } from '../../../store/stats.store';
 
+// Тип для узла с id и level для использования в grid
+interface GridNode extends MetricNodeData {
+    id: string;
+    level: Levels;
+}
+
 export function StatsGrid() {
-    const [columnDefs, setColumnDefs] = useState<ColDef<TreeNode>[]>([]);
+    const [columnDefs, setColumnDefs] = useState<ColDef<GridNode>[]>([]);
     const gridApiRef = useRef<GridApi | null>(null);
     const [searchParams] = useSearchParams();
     const metricParam = searchParams.get('metric');
@@ -30,7 +36,7 @@ export function StatsGrid() {
     }, [metric]);
 
     // Создаем datasource на основе текущих данных
-    const createDatasource = (data: Record<string, TreeNode> | null): IServerSideDatasource<any> => ({
+    const createDatasource = (data: MetricDataMap | null): IServerSideDatasource<any> => ({
         getRows(params) {
             // console.log('Запрос getRows:', JSON.stringify(params.request, null, 1));
 
@@ -43,15 +49,32 @@ export function StatsGrid() {
             const level = groupKeys.length;
 
             console.log('Запрошен уровень:', level, 'groupKeys:', groupKeys, 'startRow:', startRow, 'endRow:', endRow);
-            let allFilteredRows: TreeNode[];
+
+            let allFilteredRows: GridNode[];
             if (level === 0) {
                 // Корневой уровень - возвращаем все узлы верхнего уровня (поставщики)
-                allFilteredRows = Object.values(data).filter((node: TreeNode) => node.level === Levels.supplier);
+                allFilteredRows = Object.entries(data)
+                    .filter(([id]) => getLevel(id) === Levels.supplier)
+                    .map(([id, nodeData]) => ({
+                        ...nodeData,
+                        id,
+                        level: getLevel(id),
+                    }));
             } else {
                 const parentId = groupKeys[groupKeys.length - 1];
-                let parentNode: TreeNode | undefined = data[parentId];
-                const childIds = parentNode.children as string[];
-                allFilteredRows = childIds.map((id) => data[id]).filter(Boolean);
+                const parentNode = data[parentId];
+                const childIds = parentNode?.childIds || [];
+                allFilteredRows = childIds
+                    .map((id) => {
+                        const nodeData = data[id];
+                        if (!nodeData) return null;
+                        return {
+                            ...nodeData,
+                            id,
+                            level: getLevel(id),
+                        };
+                    })
+                    .filter(Boolean) as GridNode[];
             }
 
             // Нарезаем данные согласно startRow и endRow для пагинации
@@ -59,6 +82,7 @@ export function StatsGrid() {
             const totalRowCount = allFilteredRows.length;
 
             console.log('Всего строк доступно:', totalRowCount, 'Возвращается строк:', rowsToReturn.length, `(${startRow}-${endRow})`);
+            console.log('Примеры строк:', rowsToReturn.slice(0, 3).map(r => ({ id: r.id, level: r.level, childIds: r.childIds?.length || 0 })));
 
             params.success({
                 rowData: rowsToReturn,
@@ -88,26 +112,33 @@ export function StatsGrid() {
                 rowModelType='serverSide'
                 onGridReady={onGridReady}
                 treeData={true}
-                isServerSideGroup={(dataItem: TreeNode) => dataItem.children && dataItem.children.length > 0}
-                getServerSideGroupKey={(dataItem: TreeNode) => dataItem.id}
+                isServerSideGroup={(dataItem: GridNode) => {
+                    const hasChildren = dataItem.childIds && dataItem.childIds.length > 0;
+                    if (!hasChildren && dataItem.level !== Levels.article) {
+                        console.warn('Узел без детей:', dataItem.id, 'level:', dataItem.level, 'childIds:', dataItem.childIds);
+                    }
+                    return hasChildren;
+                }}
+                getServerSideGroupKey={(dataItem: GridNode) => dataItem.id}
                 autoGroupColumnDef={{
                     headerName: 'Hierarchy',
                     menuTabs: ['columnsMenuTab'],
                     pinned: 'left',
                     valueGetter: (params) => {
-                        const data = params.data as TreeNode;
+                        const data = params.data as GridNode;
                         if (!data) return '';
 
-                        // Отображаем соответствующее поле в зависимости от уровня узла
+                        // Извлекаем имя из id в зависимости от уровня
+                        const parts = data.id.split(':');
                         switch (data.level) {
                             case Levels.supplier:
-                                return data.supplier;
+                                return parts[0]; // supplier
                             case Levels.brand:
-                                return data.brand;
+                                return parts[1]; // brand
                             case Levels.type:
-                                return data.type;
+                                return parts[2]; // type
                             case Levels.article:
-                                return data.article;
+                                return parts[3]; // article
                             default:
                                 return '';
                         }

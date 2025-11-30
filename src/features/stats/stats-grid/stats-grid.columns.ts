@@ -1,9 +1,9 @@
 import { ColDef, ColDefField, ValueFormatterParams, ValueGetterParams } from 'ag-grid-enterprise';
 import { ORDERED_LEVELS, METADATA_LABELS } from '../../../types/levels.types';
-import { TreeNodeBase } from '../../../types/tree.types';
+import { MetricNodeData } from '../../../types/metric.types';
 
 // TODO maybe inherit statItem
-export function statsGridColumnsFactory<T extends TreeNodeBase>(dates: string[]) {
+export function statsGridColumnsFactory<T extends MetricNodeData>(dates: string[]) {
     const metadataColumns: ColDef<T>[] = ORDERED_LEVELS.map((level, index) => ({
         colId: level,
         headerName: METADATA_LABELS[level],

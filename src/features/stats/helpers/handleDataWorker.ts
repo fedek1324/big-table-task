@@ -5,7 +5,7 @@ import { processData } from './dataHandleHelpers';
 onmessage = function (e) {
     const { data, metric, requestId } = e.data;
 
-    const result = processData(data as IStatItem[], metric as Metrics, requestId);
+    const result = processData(data as IStatItem[], metric as Metrics);
     const treeObject = result.treeData;
 
     postMessage({

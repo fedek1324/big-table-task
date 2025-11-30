@@ -1,7 +1,7 @@
 import { createStore, createEvent, createEffect, sample } from 'effector';
 import { IStatItem } from '../types/stats.types';
 import { Metrics } from '../types/metrics.types';
-import { TreeNode } from '../types/tree.types';
+import { MetricDataMap } from '../types/metric.types';
 import { STATS_API } from '../api/stats.api';
 import HandleDataWorker from '../features/stats/helpers/handleDataWorker?worker';
 import { initDB, saveMetricData, getMetricData, getMetricTimestamp } from './indexedDB';
@@ -37,7 +37,7 @@ export const setMetric = createEvent<Metrics>();
  * Событие получения данных от worker-а
  */
 export const workerMessageReceived = createEvent<{
-    treeData: Record<string, TreeNode>;
+    treeData: MetricDataMap;
     metric: Metrics;
     requestId: number;
 }>();
@@ -45,7 +45,7 @@ export const workerMessageReceived = createEvent<{
 /**
  * Внутреннее событие для установки данных в $rowData
  */
-const setRowData = createEvent<Record<string, TreeNode>>();
+const setRowData = createEvent<MetricDataMap>();
 
 /**
  * Событие для очистки данных сервера после завершения предзагрузки
@@ -76,7 +76,7 @@ export const sendToWorkerFx = createEffect(
 /**
  * Сохраняет обработанные данные в IndexedDB
  */
-export const saveToIndexedDBFx = createEffect(async ({ metric, treeData }: { metric: Metrics; treeData: Record<string, TreeNode> }) => {
+export const saveToIndexedDBFx = createEffect(async ({ metric, treeData }: { metric: Metrics; treeData: MetricDataMap }) => {
     await saveMetricData(indexedDB, metric, treeData, Date.now());
 });
 
@@ -183,9 +183,9 @@ export const $serverData = createStore<IStatItem[] | null>(null)
 
 /**
  * Обработанные данные для таблицы (результат работы worker-а или кеша)
- * Хранится как объект { [nodeId]: TreeNode } для быстрого доступа по ID
+ * Хранится как объект { [nodeId]: MetricNodeData } для быстрого доступа по ID
  */
-export const $rowData = createStore<Record<string, TreeNode> | null>(null)
+export const $rowData = createStore<MetricDataMap | null>(null)
     .on(setRowData, (_, treeData) => {
         console.log('Получены обработанные данные от worker, узлов:', Object.keys(treeData).length);
         return treeData;

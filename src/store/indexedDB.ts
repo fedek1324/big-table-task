@@ -1,12 +1,12 @@
 import { openDB, IDBPDatabase } from 'idb';
 import { Metrics } from '../types/metrics.types';
-import { TreeNode } from '../types/tree.types';
+import { MetricDataMap } from '../types/metric.types';
 
 // Схема базы данных
 interface StatsDB {
     metricsData: {
         key: Metrics;
-        value: Record<string, TreeNode>;
+        value: MetricDataMap;
     };
     metricsTimestamps: {
         key: Metrics;
@@ -52,7 +52,7 @@ export async function initDB(): Promise<IDBPDatabase<StatsDB>> {
 export async function saveMetricData(
     db: IDBPDatabase<StatsDB>,
     metric: Metrics,
-    treeData: Record<string, TreeNode>,
+    treeData: MetricDataMap,
     timestamp: number,
 ): Promise<void> {
     console.time('saveToDB');
@@ -64,7 +64,7 @@ export async function saveMetricData(
 /**
  * Получает данные для метрики из IndexedDB
  */
-export async function getMetricData(db: IDBPDatabase<StatsDB>, metric: Metrics): Promise<Record<string, TreeNode> | null> {
+export async function getMetricData(db: IDBPDatabase<StatsDB>, metric: Metrics): Promise<MetricDataMap | null> {
     console.time('getFromDB');
     const record = await db.get(STORE_NAME, metric);
     console.timeEnd('getFromDB');
