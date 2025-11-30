@@ -47,6 +47,11 @@ export const workerMessageReceived = createEvent<{
  */
 const setRowData = createEvent<Record<string, TreeNode>>();
 
+/**
+ * Событие для очистки данных сервера после завершения предзагрузки
+ */
+const clearServerData = createEvent();
+
 // ========== Effects ==========
 
 /**
@@ -172,7 +177,9 @@ export const $metric = createStore<Metrics | null>(null).on(setMetric, (state, m
 /**
  * Данные с сервера (сырые данные из API)
  */
-export const $serverData = createStore<IStatItem[] | null>(null).on(loadServerDataFx.doneData, (_, data) => data);
+export const $serverData = createStore<IStatItem[] | null>(null)
+    .on(loadServerDataFx.doneData, (_, data) => data)
+    .reset(clearServerData);
 
 /**
  * Обработанные данные для таблицы (результат работы worker-а или кеша)
@@ -370,6 +377,14 @@ sample({
         requestId,
     }),
     target: preloadMetricsFx,
+});
+
+/**
+ * Очищаем данные сервера после завершения предзагрузки всех метрик
+ */
+sample({
+    clock: preloadMetricsFx.done,
+    target: clearServerData,
 });
 
 // ========== Initialization ==========
