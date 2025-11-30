@@ -142,7 +142,6 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: Metr
         const articleNode: ArticleNode = {
             id: articleId,
             level: Levels.article,
-            metric,
             children: [],
             supplier: item.supplier,
             brand: item.brand,
@@ -191,7 +190,6 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: Metr
             const typeNode: GoodTypeNode = {
                 id: nodeId,
                 level: Levels.type,
-                metric,
                 children: Array.from(children),
                 supplier,
                 brand,
@@ -220,7 +218,6 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: Metr
             const brandNode: BrandNode = {
                 id: nodeId,
                 level: Levels.brand,
-                metric,
                 children: Array.from(children),
                 supplier,
                 brand,
@@ -246,7 +243,6 @@ export function buildTreeWithAggregation(items: FilteredStatItem[], metric: Metr
             const supplierNode: SupplierNode = {
                 id: nodeId,
                 level: Levels.supplier,
-                metric,
                 children: Array.from(children),
                 supplier,
                 metricData: agg.metricData,
