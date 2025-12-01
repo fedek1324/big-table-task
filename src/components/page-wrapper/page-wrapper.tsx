@@ -1,4 +1,4 @@
-import LanguageSwitcher from '../language-switcher/LanguageSwitcher';
+import LanguageSwitcher from '../language-switcher/language-switcher';
 import { PageHeader, PageHeaderProps } from '../page-header/page-header';
 import './page-wrapper.scss';
 
