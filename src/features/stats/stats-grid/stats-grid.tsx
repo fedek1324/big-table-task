@@ -35,8 +35,8 @@ export function StatsGrid() {
     // Генерируем колонки для TreeNode
     useEffect(() => {
         const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-        setColumnDefs(statsGridColumnsFactory(dates, metric, noDataMessage));
-    }, [metric, noDataMessage]);
+        setColumnDefs(statsGridColumnsFactory(dates, metric, noDataMessage, t));
+    }, [metric, noDataMessage, t]);
 
     // Создаем datasource на основе текущих данных
     const createDatasource = (data: MetricDataMap | null): IServerSideDatasource<any> => ({
@@ -119,7 +119,7 @@ export function StatsGrid() {
                 }}
                 getServerSideGroupKey={(dataItem: GridNode) => dataItem.id}
                 autoGroupColumnDef={{
-                    headerName: 'Hierarchy',
+                    headerName: t('table.hierarchy'),
                     menuTabs: ['columnsMenuTab'],
                     pinned: 'left',
                     valueGetter: (params) => {

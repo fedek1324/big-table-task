@@ -12,6 +12,13 @@
         "Buyouts": "Buyouts"
     },
     "table": {
-        "noData": "no data"
+        "noData": "no data",
+        "supplier": "Supplier",
+        "brand": "Brand",
+        "type": "Type",
+        "article": "Article",
+        "sum": "Sum",
+        "average": "Average",
+        "hierarchy": "Hierarchy"
     }
 }
