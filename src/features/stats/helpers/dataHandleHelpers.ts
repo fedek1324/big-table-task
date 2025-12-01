@@ -52,8 +52,6 @@ const padArray = (arr: number[], elementsToTake: number): (number | undefined)[]
  * Главная функция обработки данных - объединяет все шаги
  */
 export function processData(data: IStatItem[], metric: Metrics): { treeData: MetricDataMap } {
-    console.time('processingData');
-
     // TODO мы в метрике сохраняем список товаров брендов и тд
     // а можно хранить только данные
     const allMetricData: ExtendedMetricDataMap = {};
@@ -336,8 +334,6 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Met
             }
         }
     }
-
-    console.timeEnd('processingData');
 
     // Очищаем служебное поле cellCounts перед возвратом (если оно есть)
     if (isNonAdditive) {

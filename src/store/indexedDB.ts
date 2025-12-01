@@ -55,26 +55,20 @@ export async function saveMetricData(
     treeData: MetricDataMap,
     timestamp: number,
 ): Promise<void> {
-    console.time('saveToDB');
     await db.put(STORE_NAME, treeData, metric);
     await db.put(TIMESTAMPS_STORE_NAME, timestamp, metric);
-    console.timeEnd('saveToDB');
 }
 
 /**
  * Получает данные для метрики из IndexedDB
  */
 export async function getMetricData(db: IDBPDatabase<StatsDB>, metric: Metrics): Promise<MetricDataMap | null> {
-    console.time('getFromDB');
     const record = await db.get(STORE_NAME, metric);
-    console.timeEnd('getFromDB');
 
     if (record) {
-        console.log(`Данные для метрики "${metric}" получены из IndexedDB`);
         return record;
     }
 
-    console.log(`Данных для метрики "${metric}" в IndexedDB нет`);
     return null;
 }
 
