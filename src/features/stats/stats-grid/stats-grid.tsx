@@ -11,6 +11,7 @@ import './stats-grid.scss';
 import { statsGridColumnsFactory } from './stats-grid.columns';
 import { $rowData, setMetric } from '@/store/stats.store';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '@/contexts/theme-context';
 
 // Тип для узла с id и level для использования в grid
 interface GridNode extends MetricNodeData {
@@ -26,6 +27,7 @@ export function StatsGrid() {
     const metric = metricParam && isMetric(metricParam) ? metricParam : Metrics.cost;
     const rowData = useUnit($rowData);
     const { t, i18n } = useTranslation();
+    const { theme } = useTheme();
 
     // Выбираем локаль для AgGrid в зависимости от текущего языка
     const gridLocale = useMemo(() => {
@@ -153,7 +155,7 @@ export function StatsGrid() {
                 theme={themeBalham.withParams({
                     backgroundColor: 'var(--bs-body-bg)',
                     foregroundColor: 'var(--bs-body-color)',
-                    browserColorScheme: 'light',
+                    browserColorScheme: theme,
                 })}
                 localeText={gridLocale}
                 columnDefs={columnDefs}

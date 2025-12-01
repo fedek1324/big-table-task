@@ -1,1 +1,8 @@
 @import 'bootstrap/scss/bootstrap';
+
+// Dark mode custom variables
+[data-bs-theme='dark'] {
+    --bs-body-bg: #1a1a1a;
+    --bs-body-color: #e0e0e0;
+    --bs-border-color: #404040;
+}
