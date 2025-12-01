@@ -10,5 +10,8 @@
         "Returns": "Returns",
         "Revenue": "Revenue",
         "Buyouts": "Buyouts"
+    },
+    "table": {
+        "noData": "no data"
     }
 }

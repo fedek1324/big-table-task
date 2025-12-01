@@ -9,6 +9,7 @@ import { MetricNodeData, MetricDataMap, getLevel } from '../../../types/metric.t
 import './stats-grid.scss';
 import { statsGridColumnsFactory } from './stats-grid.columns';
 import { $rowData, setMetric } from '../../../store/stats.store';
+import { useTranslation } from 'react-i18next';
 
 // Тип для узла с id и level для использования в grid
 interface GridNode extends MetricNodeData {
@@ -23,6 +24,8 @@ export function StatsGrid() {
     const metricParam = searchParams.get('metric');
     const metric = metricParam && isMetric(metricParam) ? metricParam : Metrics.cost;
     const rowData = useUnit($rowData);
+    const { t } = useTranslation();
+    const noDataMessage = t('table.noData');
 
     // Устанавливаем метрику из URL параметров в store
     useEffect(() => {
@@ -32,8 +35,8 @@ export function StatsGrid() {
     // Генерируем колонки для TreeNode
     useEffect(() => {
         const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-        setColumnDefs(statsGridColumnsFactory(dates, metric));
-    }, [metric]);
+        setColumnDefs(statsGridColumnsFactory(dates, metric, noDataMessage));
+    }, [metric, noDataMessage]);
 
     // Создаем datasource на основе текущих данных
     const createDatasource = (data: MetricDataMap | null): IServerSideDatasource<any> => ({
