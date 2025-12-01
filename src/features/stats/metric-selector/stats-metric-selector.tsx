@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Form } from 'react-bootstrap';
 import { useSearchParams } from 'react-router-dom';
 import { isMetric, Metrics, METRICS_LABELS } from '../../../types/metrics.types';
+import './stats-metric-selector.scss';
 
 export function StatsMetricSelector() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -16,6 +17,7 @@ export function StatsMetricSelector() {
             onChange={(e) => {
                 setSearchParams({ metric: e.target.value });
             }}
+            className='selector'
         >
             <option value={Metrics.cost}>{METRICS_LABELS[Metrics.cost]}</option>
             <option value={Metrics.orders}>{METRICS_LABELS[Metrics.orders]}</option>

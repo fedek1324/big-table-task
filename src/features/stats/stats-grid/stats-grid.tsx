@@ -106,16 +106,12 @@ export function StatsGrid() {
 
     return (
         <div className='stats-grid ag-theme-balham'>
-            <h2>Данные за последние 30 дней</h2>
             <AgGridReact
                 rowModelType='serverSide'
                 onGridReady={onGridReady}
                 treeData={true}
                 isServerSideGroup={(dataItem: GridNode) => {
                     const hasChildren = dataItem.childIds && dataItem.childIds.length > 0;
-                    if (!hasChildren && dataItem.level !== Levels.article) {
-                        console.warn('Узел без детей:', dataItem.id, 'level:', dataItem.level, 'childIds:', dataItem.childIds);
-                    }
                     return hasChildren;
                 }}
                 getServerSideGroupKey={(dataItem: GridNode) => dataItem.id}
