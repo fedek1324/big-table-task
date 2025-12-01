@@ -1,7 +1,14 @@
 {
     "page": {
         "stats": "Stats",
-        "cost": "Cost",
+
         "last30daysData": "Data for last 30 days"
+    },
+    "metrics": {
+        "Cost": "Cost",
+        "Orders": "Orders",
+        "Returns": "Returns",
+        "Revenue": "Revenue",
+        "Buyouts": "Buyouts"
     }
 }

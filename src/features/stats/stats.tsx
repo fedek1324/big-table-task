@@ -4,10 +4,8 @@ import { StatsGrid } from './stats-grid/stats-grid';
 import { useTranslation } from 'react-i18next';
 
 export function Stats() {
-    // @ts-ignore
     const { t } = useTranslation();
     return (
-        // @ts-ignore
         <PageWrapper title={t('page.stats')} description={t('page.stats')}>
             <StatsMetricSelector />
             <StatsGrid />
