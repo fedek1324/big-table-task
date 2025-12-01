@@ -48,7 +48,7 @@ export function StatsGrid() {
             const { groupKeys, startRow, endRow } = params.request;
             const level = groupKeys.length;
 
-            console.log('Запрошен уровень:', level, 'groupKeys:', groupKeys, 'startRow:', startRow, 'endRow:', endRow);
+            // console.log('Запрошен уровень:', level, 'groupKeys:', groupKeys, 'startRow:', startRow, 'endRow:', endRow);
 
             let allFilteredRows: GridNode[];
             if (level === 0) {
@@ -81,8 +81,7 @@ export function StatsGrid() {
             const rowsToReturn = allFilteredRows.slice(startRow, endRow);
             const totalRowCount = allFilteredRows.length;
 
-            console.log('Всего строк доступно:', totalRowCount, 'Возвращается строк:', rowsToReturn.length, `(${startRow}-${endRow})`);
-            console.log('Примеры строк:', rowsToReturn.slice(0, 3).map(r => ({ id: r.id, level: r.level, childIds: r.childIds?.length || 0 })));
+            // console.log('Всего строк доступно:', totalRowCount, 'Возвращается строк:', rowsToReturn.length, `(${startRow}-${endRow})`);
 
             params.success({
                 rowData: rowsToReturn,

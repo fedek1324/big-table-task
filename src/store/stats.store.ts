@@ -39,7 +39,6 @@ export const setMetric = createEvent<Metrics>();
 export const workerMessageReceived = createEvent<{
     treeData: MetricDataMap;
     metric: Metrics;
-    requestId: number;
 }>();
 
 /**
@@ -66,12 +65,10 @@ export const loadServerDataFx = createEffect(async () => {
 /**
  * Отправляет данные в worker для обработки
  */
-export const sendToWorkerFx = createEffect(
-    ({ worker, data, metric, requestId }: { worker: Worker; data: IStatItem[]; metric: Metrics; requestId: number }) => {
-        console.log('Отправка данных в worker, метрика:', metric, 'requestId:', requestId);
-        worker.postMessage({ data, metric, requestId });
-    },
-);
+export const sendToWorkerFx = createEffect(({ worker, data, metric }: { worker: Worker; data: IStatItem[]; metric: Metrics }) => {
+    console.log('Отправка данных в worker, метрика:', metric);
+    worker.postMessage({ data, metric });
+});
 
 /**
  * Сохраняет обработанные данные в IndexedDB
@@ -109,24 +106,13 @@ export const loadFromCacheFx = createEffect(async (metric: Metrics) => {
  * Предзагружает все метрики, кроме текущей
  */
 export const preloadMetricsFx = createEffect(
-    async ({
-        currentMetric,
-        serverData,
-        worker,
-        requestId,
-    }: {
-        currentMetric: Metrics;
-        serverData: IStatItem[];
-        worker: Worker;
-        requestId: number;
-    }) => {
+    async ({ currentMetric, serverData, worker }: { currentMetric: Metrics; serverData: IStatItem[]; worker: Worker }) => {
         const allMetrics = Object.values(Metrics);
         const metricsToPreload = allMetrics.filter((m) => m !== currentMetric);
 
         console.log(`Предзагрузка: начало фоновой обработки метрик:`, metricsToPreload);
 
         // Предзагружаем метрики последовательно с интервалом 3 секунды
-        let nThRequestId = requestId + 1;
         for (const metric of metricsToPreload) {
             // Проверяем, есть ли актуальный кэш
             const timestamp = await getMetricTimestamp(indexedDB, metric);
@@ -139,9 +125,8 @@ export const preloadMetricsFx = createEffect(
             // Ждем 3 секунды перед отправкой
             await new Promise((resolve) => setTimeout(resolve, 3000));
 
-            console.log('Отправка данных в worker, метрика:', metric, 'requestId:', nThRequestId);
-            worker.postMessage({ data: serverData, metric, requestId: nThRequestId });
-            nThRequestId++;
+            console.log('Отправка данных в worker, метрика:', metric);
+            worker.postMessage({ data: serverData, metric });
         }
     },
 );
@@ -219,11 +204,6 @@ export const $rowData = createStore<MetricDataMap | null>(null)
     .reset(setMetric); // Сбрасываем данные при смене метрики
 
 /**
- * ID запроса для отслеживания актуальности ответов от worker-а
- */
-export const $requestId = createStore<number>(0);
-
-/**
  * Инстанс worker-а
  * Инициализируется сразу при загрузке модуля
  */
@@ -231,9 +211,9 @@ console.log('Инициализация worker');
 const handleDataWorker = new HandleDataWorker();
 
 handleDataWorker.onmessage = (e: MessageEvent) => {
-    const { treeData, requestId, metric } = e.data;
-    console.log('Получено сообщение от worker, requestId:', requestId);
-    workerMessageReceived({ treeData, requestId, metric });
+    const { treeData, metric } = e.data;
+    console.log('Получено сообщение от worker, метрика:', metric);
+    workerMessageReceived({ treeData, metric });
 };
 
 handleDataWorker.onerror = (error: ErrorEvent) => {
@@ -292,7 +272,6 @@ sample({
         serverData: $serverData,
         metric: $metric,
         worker: $worker,
-        requestId: $requestId,
     },
     filter: ({ serverData, metric }, cached) => {
         const hasData = serverData !== null && serverData.length > 0;
@@ -305,11 +284,10 @@ sample({
 
         return hasData && hasMetric && noCache;
     },
-    fn: ({ serverData, metric, worker, requestId }) => ({
+    fn: ({ serverData, metric, worker }) => ({
         worker,
         data: serverData!,
         metric: metric!,
-        requestId: requestId + 1,
     }),
     target: sendToWorkerFx,
 });
@@ -323,14 +301,12 @@ sample({
     source: {
         metric: $metric,
         worker: $worker,
-        requestId: $requestId,
     },
     filter: ({ metric }) => metric !== null,
-    fn: ({ metric, worker, requestId }, data) => ({
+    fn: ({ metric, worker }, data) => ({
         worker,
         data,
         metric: metric!,
-        requestId: requestId + 1,
     }),
     target: sendToWorkerFx,
 });
@@ -343,11 +319,6 @@ sample({
     fn: ({ metric, treeData }) => ({ metric, treeData }),
     target: saveToIndexedDBFx,
 });
-
-/**
- * Увеличиваем requestId при каждой отправке в worker
- */
-$requestId.on(sendToWorkerFx, (id) => id + 1);
 
 /**
  * Запускаем фоновую предзагрузку после успешной загрузки из кэша (если данные найдены)
@@ -387,23 +358,17 @@ sample({
     source: {
         metric: $metric,
         worker: $worker,
-        requestId: $requestId,
     },
     filter: ({ metric }, serverData) => {
         const hasMetric = metric !== null;
         const hasData = serverData !== null && serverData.length > 0;
 
-        if (!hasData) {
-            console.log('Предзагрузка: все метрики закэшированы, обработка не требуется');
-        }
-
         return hasMetric && hasData;
     },
-    fn: ({ metric, worker, requestId }, serverData) => ({
+    fn: ({ metric, worker }, serverData) => ({
         currentMetric: metric!,
         serverData: serverData!,
         worker,
-        requestId,
     }),
     target: preloadMetricsFx,
 });
