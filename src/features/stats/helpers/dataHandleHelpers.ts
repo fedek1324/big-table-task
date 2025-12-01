@@ -106,7 +106,7 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Met
         } else if (metric === Metrics.returns) {
             metricData = padArray(good.returns, elementsToTake);
         } else {
-            const _exhaustive: never = metric;
+            metric satisfies never;
             console.log(`Unknown metric: ${metric}`);
             metricData = [];
         }
