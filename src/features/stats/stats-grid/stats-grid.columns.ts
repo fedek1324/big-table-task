@@ -1,9 +1,10 @@
 import { ColDef, ColDefField, ValueFormatterParams, ValueGetterParams } from 'ag-grid-enterprise';
 import { ORDERED_LEVELS, METADATA_LABELS } from '../../../types/levels.types';
 import { MetricNodeData } from '../../../types/metric.types';
+import { Metrics } from '../../../types/metrics.types';
 
 // TODO maybe inherit statItem
-export function statsGridColumnsFactory<T extends MetricNodeData>(dates: string[]) {
+export function statsGridColumnsFactory<T extends MetricNodeData>(dates: string[], metric: Metrics) {
     const metadataColumns: ColDef<T>[] = ORDERED_LEVELS.map((level, index) => ({
         colId: level,
         headerName: METADATA_LABELS[level],
@@ -21,7 +22,7 @@ export function statsGridColumnsFactory<T extends MetricNodeData>(dates: string[
             return sum !== undefined ? Math.round(sum) : sum;
         },
         valueFormatter: (params: ValueFormatterParams<T>) => {
-            return params.value?.toLocaleString() ?? '';
+            return params.value?.toLocaleString() ?? 'нет данных';
         },
     };
     const averageColumn: ColDef<T> = {
@@ -32,7 +33,7 @@ export function statsGridColumnsFactory<T extends MetricNodeData>(dates: string[
             return average !== undefined ? Math.round(average) : average;
         },
         valueFormatter: (params: ValueFormatterParams<T>) => {
-            return params.value?.toLocaleString() ?? '';
+            return params.value?.toLocaleString() ?? 'нет данных';
         },
     };
 
@@ -51,5 +52,9 @@ export function statsGridColumnsFactory<T extends MetricNodeData>(dates: string[
         },
     }));
 
-    return [...metadataColumns, sumColumn, averageColumn, ...datesColumns];
+    if (metric === Metrics.cost) {
+        return [...metadataColumns, averageColumn, ...datesColumns];
+    } else {
+        return [...metadataColumns, sumColumn, averageColumn, ...datesColumns];
+    }
 }

@@ -112,8 +112,8 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Met
         }
 
         // Вычисляем сумму и серднее по всей метрике
-        const metricSum = metricData.reduce<number>((acc, val) => acc + (val ?? 0), 0);
-        const metricAverage = metricSum / elementsToTake;
+        const metricSum = elementsToTake > 0 ? metricData.reduce<number>((acc, val) => acc + (val ?? 0), 0) : undefined;
+        const metricAverage = elementsToTake > 0 && metricSum !== undefined ? metricSum / elementsToTake : undefined;
 
         // 2) Мы должны получить плоскую структуру объектов с id и childIds[]
         const idSplit = newGoodId.split(':');

@@ -32,7 +32,7 @@ export function StatsGrid() {
     // Генерируем колонки для TreeNode
     useEffect(() => {
         const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-        setColumnDefs(statsGridColumnsFactory(dates));
+        setColumnDefs(statsGridColumnsFactory(dates, metric));
     }, [metric]);
 
     // Создаем datasource на основе текущих данных
