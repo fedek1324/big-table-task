@@ -3,12 +3,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { StatsGrid } from './stats-grid';
-import { STATS_API } from '../../../api/stats.api';
-import { loadServerDataFx } from '../../../store/stats.store';
-import type { IStatItem } from '../../../types/stats.types';
+import { STATS_API } from '@/api/stats.api';
+import { loadServerDataFx } from '@/store/stats.store';
+import type { IStatItem } from '@/types/stats.types';
 
 // Мокаем API с дефолтным значением
-vi.mock('../../../api/stats.api', () => ({
+vi.mock('@/api/stats.api', () => ({
     STATS_API: {
         getFull: vi.fn().mockResolvedValue([]),
     },

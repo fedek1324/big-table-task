@@ -1,15 +1,15 @@
 import { AgGridReact } from 'ag-grid-react';
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { ColDef, GridReadyEvent, IServerSideDatasource, GridApi, themeBalham } from 'ag-grid-enterprise';
-import { AG_GRID_LOCALE_RU } from '../../../i18n/AgGridRu';
+import { AG_GRID_LOCALE_RU } from '@/i18n/AgGridRu';
 import { useSearchParams } from 'react-router-dom';
 import { useUnit } from 'effector-react';
-import { Metrics, isMetric } from '../../../types/metrics.types';
-import { Levels } from '../../../types/levels.types';
-import { MetricNodeData, MetricDataMap, getLevel } from '../../../types/metric.types';
+import { Metrics, isMetric } from '@/types/metrics.types';
+import { Levels } from '@/types/levels.types';
+import { MetricNodeData, MetricDataMap, getLevel } from '@/types/metric.types';
 import './stats-grid.scss';
 import { statsGridColumnsFactory } from './stats-grid.columns';
-import { $rowData, setMetric } from '../../../store/stats.store';
+import { $rowData, setMetric } from '@/store/stats.store';
 import { useTranslation } from 'react-i18next';
 
 // Тип для узла с id и level для использования в grid

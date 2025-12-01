@@ -1,5 +1,5 @@
-import { IStatItem } from '../../../types/stats.types';
-import { Metrics } from '../../../types/metrics.types';
+import { IStatItem } from '@/types/stats.types';
+import { Metrics } from '@/types/metrics.types';
 import { processData } from './dataHandleHelpers';
 
 onmessage = function (e) {

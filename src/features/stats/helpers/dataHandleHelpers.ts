@@ -1,6 +1,6 @@
-import { IStatItem } from '../../../types/stats.types';
-import { MetricDataMap, MetricNodeData, createNodeId } from '../../../types/metric.types';
-import { Metrics } from '../../../types/metrics.types';
+import { IStatItem } from '@/types/stats.types';
+import { MetricDataMap, MetricNodeData, createNodeId } from '@/types/metric.types';
+import { Metrics } from '@/types/metrics.types';
 
 // Расширенный тип для поддержки неаддитивных метрик (cost)
 // Для cost нужно хранить количество ячеек по дням для вычисления средних

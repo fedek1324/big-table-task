@@ -1,7 +1,7 @@
 import { ColDef, ColDefField, ValueFormatterParams, ValueGetterParams } from 'ag-grid-enterprise';
-import { ORDERED_LEVELS, Levels } from '../../../types/levels.types';
-import { MetricNodeData } from '../../../types/metric.types';
-import { Metrics } from '../../../types/metrics.types';
+import { ORDERED_LEVELS, Levels } from '@/types/levels.types';
+import { MetricNodeData } from '@/types/metric.types';
+import { Metrics } from '@/types/metrics.types';
 import { TFunction } from 'i18next';
 
 // TODO maybe inherit statItem

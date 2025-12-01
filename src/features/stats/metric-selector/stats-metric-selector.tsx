@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Form } from 'react-bootstrap';
 import { useSearchParams } from 'react-router-dom';
-import { isMetric, Metrics, METRICS_LABELS } from '../../../types/metrics.types';
+import { isMetric, Metrics, METRICS_LABELS } from '@/types/metrics.types';
 import { useTranslation } from 'react-i18next';
 
 import './stats-metric-selector.scss';
