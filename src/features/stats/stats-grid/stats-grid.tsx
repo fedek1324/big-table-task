@@ -1,6 +1,7 @@
 import { AgGridReact } from 'ag-grid-react';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { ColDef, GridReadyEvent, IServerSideDatasource, GridApi, themeBalham } from 'ag-grid-enterprise';
+import { AG_GRID_LOCALE_RU } from '../../../i18n/AgGridRu';
 import { useSearchParams } from 'react-router-dom';
 import { useUnit } from 'effector-react';
 import { Metrics, isMetric } from '../../../types/metrics.types';
@@ -24,7 +25,12 @@ export function StatsGrid() {
     const metricParam = searchParams.get('metric');
     const metric = metricParam && isMetric(metricParam) ? metricParam : Metrics.cost;
     const rowData = useUnit($rowData);
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+
+    // Выбираем локаль для AgGrid в зависимости от текущего языка
+    const gridLocale = useMemo(() => {
+        return i18n.language === 'ru' ? AG_GRID_LOCALE_RU : undefined;
+    }, [i18n.language]);
 
     // Устанавливаем метрику из URL параметров в store
     useEffect(() => {
@@ -149,6 +155,7 @@ export function StatsGrid() {
                     foregroundColor: 'var(--bs-body-color)',
                     browserColorScheme: 'light',
                 })}
+                localeText={gridLocale}
                 columnDefs={columnDefs}
             ></AgGridReact>
         </div>
