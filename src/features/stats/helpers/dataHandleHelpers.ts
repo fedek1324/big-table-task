@@ -173,6 +173,10 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Met
                 return (parent.metricData[i] ?? 0) + dayNumber;
             }
         });
+
+        // Освобождаем память: удаляем обработанный элемент
+        // @ts-ignore - явно устанавливаем undefined для сборщика мусора
+        data[i] = undefined;
     }
 
     // 4) После того как прошли все товары, проводим полную агрегацию
