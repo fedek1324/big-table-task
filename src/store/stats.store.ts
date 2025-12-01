@@ -7,8 +7,6 @@ import HandleDataWorker from '../features/stats/helpers/handleDataWorker?worker'
 import { initDB, saveMetricData, getMetricData, getMetricTimestamp } from './indexedDB';
 import { isSameDay } from '../helpers/date.helpers';
 
-const indexedDB = await initDB();
-
 // Алгоритм работы с очередью метрик:
 // 1. При первой установке метрики проверяем кэш и создаём очередь метрик которые нужно вычислить
 //    Установленную метрику ставим первой в очереди
@@ -18,6 +16,23 @@ const indexedDB = await initDB();
 //      - Если метрика сейчас в выполнении → ждём
 //      - Если метрика не в выполнении → прерываем worker, создаём новую очередь
 //        (эта метрика первая) и запускаем
+
+const indexedDB = await initDB();
+
+/**
+ * Инстанс worker-а
+ */
+const handleDataWorker = new HandleDataWorker();
+
+handleDataWorker.onmessage = (e: MessageEvent) => {
+    const { treeData, metric } = e.data;
+    console.log('Получено сообщение от worker, метрика:', metric);
+    workerMessageReceived({ treeData, metric });
+};
+
+handleDataWorker.onerror = (error: ErrorEvent) => {
+    console.error('Ошибка worker:', error);
+};
 
 // ========== Events ==========
 
@@ -210,21 +225,6 @@ export const $metricsQueue = createStore<Metrics[]>([]).on(setMetricsQueue, (_, 
 export const $processingIndex = createStore<number>(0)
     .on(setProcessingIndex, (_, index) => index)
     .on(incrementProcessingIndex, (index) => index + 1);
-
-/**
- * Инстанс worker-а
- */
-const handleDataWorker = new HandleDataWorker();
-
-handleDataWorker.onmessage = (e: MessageEvent) => {
-    const { treeData, metric } = e.data;
-    console.log('Получено сообщение от worker, метрика:', metric);
-    workerMessageReceived({ treeData, metric });
-};
-
-handleDataWorker.onerror = (error: ErrorEvent) => {
-    console.error('Ошибка worker:', error);
-};
 
 export const $worker = createStore<Worker>(handleDataWorker).on(recreateWorkerFx.doneData, (_, { worker }) => worker);
 
