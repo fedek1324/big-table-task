@@ -17,7 +17,8 @@ export function statsGridColumnsFactory<T extends MetricNodeData>(dates: string[
         colId: 'sums',
         headerName: 'Sum',
         valueGetter: (params: ValueGetterParams<T>) => {
-            return params.data?.sum ?? 0;
+            let sum = params.data?.sum;
+            return sum !== undefined ? Math.round(sum) : sum;
         },
         valueFormatter: (params: ValueFormatterParams<T>) => {
             return params.value?.toLocaleString() ?? '';
@@ -27,7 +28,8 @@ export function statsGridColumnsFactory<T extends MetricNodeData>(dates: string[
         colId: 'average',
         headerName: 'Average',
         valueGetter: (params: ValueGetterParams<T>) => {
-            return params.data?.average ?? 0;
+            let average = params.data?.average;
+            return average !== undefined ? Math.round(average) : average;
         },
         valueFormatter: (params: ValueFormatterParams<T>) => {
             return params.value?.toLocaleString() ?? '';
