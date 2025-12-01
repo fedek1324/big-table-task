@@ -25,7 +25,6 @@ export function StatsGrid() {
     const metric = metricParam && isMetric(metricParam) ? metricParam : Metrics.cost;
     const rowData = useUnit($rowData);
     const { t } = useTranslation();
-    const noDataMessage = t('table.noData');
 
     // Устанавливаем метрику из URL параметров в store
     useEffect(() => {
@@ -35,8 +34,8 @@ export function StatsGrid() {
     // Генерируем колонки для TreeNode
     useEffect(() => {
         const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-        setColumnDefs(statsGridColumnsFactory(dates, metric, noDataMessage, t));
-    }, [metric, noDataMessage, t]);
+        setColumnDefs(statsGridColumnsFactory(dates, metric, t));
+    }, [metric, t]);
 
     // Создаем datasource на основе текущих данных
     const createDatasource = (data: MetricDataMap | null): IServerSideDatasource<any> => ({

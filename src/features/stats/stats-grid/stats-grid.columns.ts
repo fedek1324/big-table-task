@@ -5,7 +5,7 @@ import { Metrics } from '../../../types/metrics.types';
 import { TFunction } from 'i18next';
 
 // TODO maybe inherit statItem
-export function statsGridColumnsFactory<T extends MetricNodeData>(dates: string[], metric: Metrics, noDataMessage: string, t: TFunction) {
+export function statsGridColumnsFactory<T extends MetricNodeData>(dates: string[], metric: Metrics, t: TFunction) {
     const metadataColumns: ColDef<T>[] = ORDERED_LEVELS.map((level, index) => {
         const translationKey =
             level === Levels.supplier
@@ -33,7 +33,7 @@ export function statsGridColumnsFactory<T extends MetricNodeData>(dates: string[
             return sum !== undefined ? Math.round(sum) : sum;
         },
         valueFormatter: (params: ValueFormatterParams<T>) => {
-            return params.value?.toLocaleString() ?? noDataMessage;
+            return params.value?.toLocaleString() ?? t('table.noData');
         },
     };
     const averageColumn: ColDef<T> = {
@@ -44,7 +44,7 @@ export function statsGridColumnsFactory<T extends MetricNodeData>(dates: string[
             return average !== undefined ? Math.round(average) : average;
         },
         valueFormatter: (params: ValueFormatterParams<T>) => {
-            return params.value?.toLocaleString() ?? noDataMessage;
+            return params.value?.toLocaleString() ?? t('table.noData');
         },
     };
 
@@ -57,7 +57,7 @@ export function statsGridColumnsFactory<T extends MetricNodeData>(dates: string[
         },
         valueFormatter: (params: ValueFormatterParams<T>) => {
             if (params.value === null || params.value === undefined) {
-                return noDataMessage;
+                return t('table.noData');
             }
             return params.value.toLocaleString();
         },
