@@ -323,13 +323,22 @@ sample({
 });
 
 /**
- * Если сохранили метрику которая сейчас выбрана - загружаем из кэша
+ * Если сохранили метрику которая сейчас выбрана и данные ещё не загружены - загружаем из кэша
+ * Это нужно для race condition когда метрика была посчитана до переключения на неё
  */
 sample({
     clock: saveToIndexedDBFx.doneData,
-    source: $metric,
-    filter: (currentMetric, savedMetric) => currentMetric === savedMetric,
-    fn: (currentMetric) => currentMetric!,
+    source: {
+        currentMetric: $metric,
+        rowData: $rowData,
+    },
+    filter: ({ currentMetric, rowData }, savedMetric) => {
+        // Загружаем из кэша только если:
+        // 1. Сохранённая метрика совпадает с текущей
+        // 2. Данные ещё не загружены (setRowData не вызывался)
+        return currentMetric === savedMetric && rowData === null;
+    },
+    fn: ({ currentMetric }) => currentMetric!,
     target: loadFromCacheFx,
 });
 
