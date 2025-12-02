@@ -63,11 +63,6 @@ const setRowData = createEvent<MetricDataMap>();
  */
 const clearServerData = createEvent();
 
-/**
- * Событие для инкремента индекса (переход к следующей метрике)
- */
-const incrementProcessingIndex = createEvent();
-
 // ========== Effects ==========
 
 /**
@@ -82,7 +77,7 @@ export const loadServerDataFx = createEffect(async () => {
 /**
  * Сохраняет обработанные данные в IndexedDB
  */
-export const saveToIndexedDBFx = createEffect(async ({ metric, treeData }: { metric: Metrics; treeData: MetricDataMap }) => {
+export const saveMetricDataToDbFx = createEffect(async ({ metric, treeData }: { metric: Metrics; treeData: MetricDataMap }) => {
     await saveMetricData(indexedDB, metric, treeData, Date.now());
     console.log(`Метрика "${metric}" сохранена в кэш`);
     return metric;
@@ -195,7 +190,7 @@ export const $metricsQueue = createStore<Metrics[]>([]).on(createMetricsQueueFx.
  * metricQueue.length = вся очередь обработана
  */
 export const $processingIndex = createStore<number>(0)
-    .on(incrementProcessingIndex, (index) => index + 1)
+    .on(saveMetricDataToDbFx.doneData, (index) => index + 1)
     .on(createMetricsQueueFx.doneData, () => 0);
 
 export const $worker = createStore<Worker | null>(null).on(createMetricsQueueFx.doneData, (_, { worker }) => worker);
@@ -242,6 +237,8 @@ sample({
         const currentMetricInProgress = queue[processingIndex];
         const isCurrentMetricInProgress = queueInProgress && currentMetricInProgress === metric;
 
+        // Если нужная метрика сейчас не обрабатывается и кэша по ней нет,
+        // то нужно пересоздать (или создать) очередь
         const shouldRecreate = queueEmpty || !isCurrentMetricInProgress;
 
         if (shouldRecreate) {
@@ -266,10 +263,11 @@ sample({
 
 /**
  * Обработка следующей метрики из очереди
- * Срабатывает после загрузки данных, создания очереди или инкремента индекса
+ * Срабатывает после загрузки данных с сервера,
+ * создания очереди или сохранения в БД данных для n-ой метрики
  */
 sample({
-    clock: [loadServerDataFx.doneData, createMetricsQueueFx.doneData, incrementProcessingIndex],
+    clock: [loadServerDataFx.doneData, createMetricsQueueFx.doneData, saveMetricDataToDbFx.doneData],
     source: {
         queue: $metricsQueue,
         serverData: $serverData,
@@ -301,7 +299,7 @@ sample({
 sample({
     clock: workerMessageReceived,
     fn: ({ metric, treeData }) => ({ metric, treeData }),
-    target: saveToIndexedDBFx,
+    target: saveMetricDataToDbFx,
 });
 
 sample({
@@ -313,19 +311,11 @@ sample({
 });
 
 /**
- * После сохранения в кэш - инкрементируем индекс
- */
-sample({
-    clock: saveToIndexedDBFx.doneData,
-    target: incrementProcessingIndex,
-});
-
-/**
  * Если сохранили метрику которая сейчас выбрана и данные ещё не загружены - загружаем из кэша
  * Это нужно для race condition когда метрика была посчитана до переключения на неё
  */
 sample({
-    clock: saveToIndexedDBFx.doneData,
+    clock: saveMetricDataToDbFx.doneData,
     source: {
         currentMetric: $metric,
         rowData: $rowData,
@@ -341,7 +331,7 @@ sample({
  * После завершения обработки всей очереди - очищаем данные сервера
  */
 sample({
-    clock: incrementProcessingIndex,
+    clock: saveMetricDataToDbFx.doneData,
     source: {
         queue: $metricsQueue,
         index: $processingIndex,
