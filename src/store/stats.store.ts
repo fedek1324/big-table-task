@@ -131,11 +131,6 @@ export const createMetricsQueueFx = createEffect(
             }
         }
 
-        if (metricsWithoutCache.length === 0) {
-            console.log('Все метрики в актуальном кэше');
-            return { queue: [], worker: null };
-        }
-
         // Если очередь не пустая - пересоздаём worker
         currentWorker?.terminate();
         const newWorker = createWorkerInstance();
