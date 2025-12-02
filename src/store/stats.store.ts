@@ -20,19 +20,28 @@ import { isSameDay } from '../helpers/date.helpers';
 const indexedDB = await initDB();
 
 /**
+ * Создает и настраивает новый экземпляр worker
+ */
+function createWorkerInstance(): Worker {
+    const worker = new HandleDataWorker();
+
+    worker.onmessage = (e: MessageEvent) => {
+        const { treeData, metric } = e.data;
+        console.log('Получено сообщение от worker, метрика:', metric);
+        workerMessageReceived({ treeData, metric });
+    };
+
+    worker.onerror = (error: ErrorEvent) => {
+        console.error('Ошибка worker:', error);
+    };
+
+    return worker;
+}
+
+/**
  * Инстанс worker-а
  */
-const handleDataWorker = new HandleDataWorker();
-
-handleDataWorker.onmessage = (e: MessageEvent) => {
-    const { treeData, metric } = e.data;
-    console.log('Получено сообщение от worker, метрика:', metric);
-    workerMessageReceived({ treeData, metric });
-};
-
-handleDataWorker.onerror = (error: ErrorEvent) => {
-    console.error('Ошибка worker:', error);
-};
+const handleDataWorker = createWorkerInstance();
 
 // ========== Events ==========
 
@@ -168,16 +177,7 @@ export const recreateWorkerFx = createEffect((metric: Metrics) => {
     const currentWorker = $worker.getState();
     currentWorker.terminate();
 
-    const newWorker = new HandleDataWorker();
-
-    newWorker.onmessage = (e: MessageEvent) => {
-        const { treeData, metric } = e.data;
-        workerMessageReceived({ treeData, metric });
-    };
-
-    newWorker.onerror = (error: ErrorEvent) => {
-        console.error('Ошибка worker:', error);
-    };
+    const newWorker = createWorkerInstance();
 
     return { worker: newWorker, metric };
 });
