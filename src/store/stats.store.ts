@@ -233,11 +233,6 @@ export const $isLoading = createStore<boolean>(false)
 // ========== Logic (Samples) ==========
 
 /**
- * Результат проверки кэша - содержит метрику и флаг необходимости пересоздания
- */
-const checkCache = createEvent<{ metric: Metrics; shouldRecreate: boolean }>();
-
-/**
  * При изменении метрики - пытаемся загрузить данные из кеша
  */
 sample({
@@ -247,7 +242,7 @@ sample({
 });
 
 /**
- * Если кэша нет - проверяем состояние очереди и принимаем решение
+ * Если кэша нет - проверяем состояние очереди и пересоздаём worker если нужно
  */
 sample({
     clock: loadFromCacheFx.doneData,
@@ -256,8 +251,9 @@ sample({
         queue: $metricsQueue,
         processingIndex: $processingIndex,
     },
-    filter: ({ metric }, cachedData) => cachedData === null && metric !== null,
-    fn: ({ metric, queue, processingIndex }) => {
+    filter: ({ metric, queue, processingIndex }, cachedData) => {
+        if (cachedData !== null || metric === null) return false;
+
         const queueEmpty = queue.length === 0;
         const queueInProgress = processingIndex < queue.length;
         const currentMetric = queue[processingIndex];
@@ -269,20 +265,10 @@ sample({
             console.log(queueEmpty ? 'Инициализация очереди' : 'Пересоздание очереди', 'для:', metric);
         }
 
-        return { metric: metric!, shouldRecreate };
+        return shouldRecreate;
     },
-    target: checkCache,
-});
-
-/**
- * Разделяем логику: если нужно пересоздать worker - пересоздаём, иначе ничего не делаем
- */
-split({
-    source: checkCache,
-    match: ({ shouldRecreate }) => (shouldRecreate ? 'recreate' : '__'),
-    cases: {
-        recreate: recreateWorkerFx.prepend((data: { metric: Metrics; shouldRecreate: boolean }) => data.metric),
-    },
+    fn: ({ metric }) => metric!,
+    target: recreateWorkerFx,
 });
 
 /**
