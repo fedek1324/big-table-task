@@ -1,4 +1,4 @@
-import { createStore, createEvent, createEffect, sample } from 'effector';
+import { createStore, createEvent, createEffect, sample, split } from 'effector';
 import { IStatItem } from '../types/stats.types';
 import { Metrics } from '../types/metrics.types';
 import { MetricDataMap } from '../types/metric.types';
@@ -84,6 +84,11 @@ const setProcessingIndex = createEvent<number>();
  * Событие для инкремента индекса (переход к следующей метрике)
  */
 const incrementProcessingIndex = createEvent();
+
+/**
+ * Событие для обработки очереди когда данные сервера уже доступны
+ */
+const processQueueWithExistingData = createEvent<Metrics[]>();
 
 // ========== Effects ==========
 
@@ -318,57 +323,53 @@ sample({
 });
 
 /**
- * Если очередь не пустая и данных с сервера нет - загружаем с сервера
+ * Разделение логики обработки очереди в зависимости от наличия данных с сервера
+ * Используем split из effector для упрощения кода
  */
-sample({
-    clock: createMetricsQueueFx.doneData,
-    source: $serverData,
-    filter: (serverData, queue) => {
-        const queueNotEmpty = queue.length > 0;
+split({
+    source: createMetricsQueueFx.doneData,
+    match: (queue: Metrics[]) => {
+        if (queue.length === 0) return '__';
+
+        const serverData = $serverData.getState();
         const noServerData = serverData === null || serverData.length === 0;
-        return queueNotEmpty && noServerData;
+
+        if (noServerData) {
+            return 'needServerData';
+        }
+
+        const index = $processingIndex.getState();
+        if (index < queue.length) {
+            return 'hasServerData';
+        }
+
+        return '__';
     },
-    target: loadServerDataFx,
+    cases: {
+        needServerData: loadServerDataFx,
+        hasServerData: processQueueWithExistingData,
+    },
 });
 
 /**
- * После загрузки данных с сервера - начинаем обработку первой метрики из очереди
+ * Обработка метрики после загрузки данных или если данные уже доступны
+ * Объединяем оба случая в один sample с массивом clock
  */
 sample({
-    clock: loadServerDataFx.doneData,
+    clock: [loadServerDataFx.doneData, processQueueWithExistingData],
     source: {
         queue: $metricsQueue,
-        index: $processingIndex,
-        worker: $worker,
-    },
-    filter: ({ queue, index }) => index < queue.length,
-    fn: ({ queue, index, worker }, serverData) => ({
-        queue,
-        index,
-        serverData,
-        worker,
-    }),
-    target: processNextMetricFx,
-});
-
-/**
- * Если очередь создана и данные с сервера уже есть - сразу начинаем обработку
- */
-sample({
-    clock: createMetricsQueueFx.doneData,
-    source: {
         serverData: $serverData,
         index: $processingIndex,
         worker: $worker,
     },
-    filter: ({ serverData, index }, queue) => {
-        const hasServerData = serverData !== null && serverData.length > 0;
-        const queueNotEmpty = queue.length > 0;
+    filter: ({ serverData, index, queue }) => {
+        const hasData = serverData !== null && serverData.length > 0;
         const canProcess = index < queue.length;
-
-        return hasServerData && queueNotEmpty && canProcess;
+        const queueNotEmpty = queue.length > 0;
+        return hasData && canProcess && queueNotEmpty;
     },
-    fn: ({ serverData, index, worker }, queue) => ({
+    fn: ({ queue, serverData, index, worker }) => ({
         queue,
         index,
         serverData: serverData!,
