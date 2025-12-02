@@ -1,4 +1,4 @@
-import { createStore, createEvent, createEffect, sample, split } from 'effector';
+import { createStore, createEvent, createEffect, sample } from 'effector';
 import { IStatItem } from '../types/stats.types';
 import { Metrics } from '../types/metrics.types';
 import { MetricDataMap } from '../types/metric.types';
@@ -68,11 +68,6 @@ const clearServerData = createEvent();
  */
 const incrementProcessingIndex = createEvent();
 
-/**
- * Событие для обработки очереди когда данные сервера уже доступны
- */
-const processQueueWithExistingData = createEvent<Metrics[]>();
-
 // ========== Effects ==========
 
 /**
@@ -90,6 +85,7 @@ export const loadServerDataFx = createEffect(async () => {
 export const saveToIndexedDBFx = createEffect(async ({ metric, treeData }: { metric: Metrics; treeData: MetricDataMap }) => {
     await saveMetricData(indexedDB, metric, treeData, Date.now());
     console.log(`Метрика "${metric}" сохранена в кэш`);
+    return { metric, treeData };
 });
 
 /**
@@ -259,25 +255,15 @@ sample({
 });
 
 /**
- * Разделение логики обработки очереди в зависимости от наличия данных с сервера
- * Используем split из effector для упрощения кода
+ * Если очередь создана и нет данных с сервера - загружаем их
  */
-split({
+sample({
     source: createMetricsQueueFx.doneData,
-    match: () => {
+    filter: () => {
         const serverData = $serverData.getState();
-        const noServerData = serverData === null || serverData.length === 0;
-
-        if (noServerData) {
-            return 'needServerData';
-        }
-
-        return 'hasServerData';
+        return serverData === null || serverData.length === 0;
     },
-    cases: {
-        needServerData: loadServerDataFx,
-        hasServerData: processQueueWithExistingData.prepend((data: { queue: Metrics[]; worker: Worker | null }) => data.queue),
-    },
+    target: loadServerDataFx,
 });
 
 /**
@@ -285,7 +271,7 @@ split({
  * Срабатывает после загрузки данных, создания очереди или инкремента индекса
  */
 sample({
-    clock: [loadServerDataFx.doneData, processQueueWithExistingData, incrementProcessingIndex],
+    clock: [loadServerDataFx.doneData, createMetricsQueueFx.doneData, incrementProcessingIndex],
     source: {
         queue: $metricsQueue,
         serverData: $serverData,
@@ -334,6 +320,17 @@ sample({
 sample({
     clock: saveToIndexedDBFx.doneData,
     target: incrementProcessingIndex,
+});
+
+/**
+ * Если сохранили метрику которая сейчас выбрана - загружаем из кэша
+ */
+sample({
+    clock: saveToIndexedDBFx.doneData,
+    source: $metric,
+    filter: (currentMetric, { metric }) => currentMetric === metric,
+    fn: (currentMetric) => currentMetric!,
+    target: loadFromCacheFx,
 });
 
 /**
