@@ -119,37 +119,38 @@ export const loadFromCacheFx = createEffect(async (metric: Metrics) => {
  * Проверяет кэш всех метрик и формирует очередь из тех, которых нет в кэше
  * Текущую метрику ставит первой в очереди
  */
-export const createMetricsQueueFx = createEffect(async (currentMetric: Metrics) => {
-    const allMetrics = Object.values(Metrics);
-    const metricsWithoutCache: Metrics[] = [];
+export const createMetricsQueueFx = createEffect(
+    async ({ metric: currentMetric, worker: currentWorker }: { metric: Metrics; worker: Worker | null }) => {
+        const allMetrics = Object.values(Metrics);
+        const metricsWithoutCache: Metrics[] = [];
 
-    for (const metric of allMetrics) {
-        const timestamp = await getMetricTimestamp(indexedDB, metric);
-        if (!timestamp || !isSameDay(timestamp, Date.now())) {
-            metricsWithoutCache.push(metric);
+        for (const metric of allMetrics) {
+            const timestamp = await getMetricTimestamp(indexedDB, metric);
+            if (!timestamp || !isSameDay(timestamp, Date.now())) {
+                metricsWithoutCache.push(metric);
+            }
         }
-    }
 
-    if (metricsWithoutCache.length === 0) {
-        console.log('Все метрики в актуальном кэше');
-        return { queue: [], worker: null };
-    }
+        if (metricsWithoutCache.length === 0) {
+            console.log('Все метрики в актуальном кэше');
+            return { queue: [], worker: null };
+        }
 
-    // Если очередь не пустая - пересоздаём worker
-    const currentWorker = $worker.getState();
-    currentWorker?.terminate();
-    const newWorker = createWorkerInstance();
+        // Если очередь не пустая - пересоздаём worker
+        currentWorker?.terminate();
+        const newWorker = createWorkerInstance();
 
-    // Переставляем текущую метрику на первое место
-    const currentIndex = metricsWithoutCache.indexOf(currentMetric);
-    if (currentIndex > -1) {
-        metricsWithoutCache.splice(currentIndex, 1);
-        metricsWithoutCache.unshift(currentMetric);
-    }
+        // Переставляем текущую метрику на первое место
+        const currentIndex = metricsWithoutCache.indexOf(currentMetric);
+        if (currentIndex > -1) {
+            metricsWithoutCache.splice(currentIndex, 1);
+            metricsWithoutCache.unshift(currentMetric);
+        }
 
-    console.log('Создана очередь метрик:', metricsWithoutCache);
-    return { queue: metricsWithoutCache, worker: newWorker };
-});
+        console.log('Создана очередь метрик:', metricsWithoutCache);
+        return { queue: metricsWithoutCache, worker: newWorker };
+    },
+);
 
 /**
  * Обрабатывает следующую метрику из очереди
@@ -227,7 +228,8 @@ export const $worker = createStore<Worker | null>(handleDataWorker).on(createMet
 export const $isLoading = createStore<boolean>(false)
     .on(setMetric, () => true)
     .on(loadFromCacheFx.doneData, (_, cachedData) => (cachedData ? false : true))
-    .on(setRowData, () => false);
+    .on(setRowData, () => false)
+    .on(createMetricsQueueFx.doneData, (_, { queue }) => (queue.length === 0 ? false : true));
 
 // ========== Logic (Samples) ==========
 
@@ -249,6 +251,7 @@ sample({
         metric: $metric,
         queue: $metricsQueue,
         processingIndex: $processingIndex,
+        worker: $worker,
     },
     filter: ({ metric, queue, processingIndex }, cachedData) => {
         if (cachedData !== null || metric === null) return false;
@@ -268,7 +271,7 @@ sample({
 
         return shouldRecreate;
     },
-    fn: ({ metric }) => metric!,
+    fn: ({ metric, worker }) => ({ metric: metric!, worker }),
     target: createMetricsQueueFx,
 });
 
