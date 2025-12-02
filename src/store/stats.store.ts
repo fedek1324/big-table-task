@@ -69,18 +69,6 @@ const setRowData = createEvent<MetricDataMap>();
 const clearServerData = createEvent();
 
 /**
- * Событие для установки очереди метрик
- */
-const setMetricsQueue = createEvent<Metrics[]>();
-
-/**
- * Событие для установки индекса текущей обрабатываемой метрики
- * 0 = первая метрика в очереди
- * metricQueue.length = вся очередь обработана
- */
-const setProcessingIndex = createEvent<number>();
-
-/**
  * Событие для инкремента индекса (переход к следующей метрике)
  */
 const incrementProcessingIndex = createEvent();
@@ -220,9 +208,7 @@ export const $rowData = createStore<MetricDataMap | null>(null)
  * Очередь метрик для вычисления
  * Содержит метрики, которые нужно обработать
  */
-export const $metricsQueue = createStore<Metrics[]>([])
-    .on(setMetricsQueue, (_, queue) => queue)
-    .on(createMetricsQueueFx.doneData, (_, queue) => queue);
+export const $metricsQueue = createStore<Metrics[]>([]).on(createMetricsQueueFx.doneData, (_, queue) => queue);
 
 /**
  * Индекс текущей обрабатываемой метрики в очереди
@@ -230,7 +216,6 @@ export const $metricsQueue = createStore<Metrics[]>([])
  * metricQueue.length = вся очередь обработана
  */
 export const $processingIndex = createStore<number>(0)
-    .on(setProcessingIndex, (_, index) => index)
     .on(incrementProcessingIndex, (index) => index + 1)
     .on(createMetricsQueueFx.doneData, () => 0);
 
