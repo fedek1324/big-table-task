@@ -258,11 +258,9 @@ sample({
  * Если очередь создана и нет данных с сервера - загружаем их
  */
 sample({
-    source: createMetricsQueueFx.doneData,
-    filter: () => {
-        const serverData = $serverData.getState();
-        return serverData === null || serverData.length === 0;
-    },
+    clock: createMetricsQueueFx.doneData,
+    source: $serverData,
+    filter: (serverData) => serverData === null || serverData.length === 0,
     target: loadServerDataFx,
 });
 
@@ -333,9 +331,6 @@ sample({
         rowData: $rowData,
     },
     filter: ({ currentMetric, rowData }, savedMetric) => {
-        // Загружаем из кэша только если:
-        // 1. Сохранённая метрика совпадает с текущей
-        // 2. Данные ещё не загружены (setRowData не вызывался)
         return currentMetric === savedMetric && rowData === null;
     },
     fn: ({ currentMetric }) => currentMetric!,
