@@ -281,10 +281,11 @@ split({
 });
 
 /**
- * Обработка метрики после загрузки данных с сервера или если данные уже были доступны
+ * Обработка следующей метрики из очереди
+ * Срабатывает после загрузки данных, создания очереди или инкремента индекса
  */
 sample({
-    clock: [loadServerDataFx.doneData, processQueueWithExistingData],
+    clock: [loadServerDataFx.doneData, processQueueWithExistingData, incrementProcessingIndex],
     source: {
         queue: $metricsQueue,
         serverData: $serverData,
@@ -294,8 +295,12 @@ sample({
     filter: ({ serverData, index, queue }) => {
         const hasData = serverData !== null && serverData.length > 0;
         const canProcess = index < queue.length;
-        const queueNotEmpty = queue.length > 0;
-        return hasData && canProcess && queueNotEmpty;
+
+        if (!canProcess && queue.length > 0) {
+            console.log('Вся очередь обработана');
+        }
+
+        return hasData && canProcess;
     },
     fn: ({ queue, serverData, index, worker }) => ({
         queue,
@@ -324,41 +329,11 @@ sample({
 });
 
 /**
- * После сохранения в кэш - инкрементируем индекс и обрабатываем следующую метрику
+ * После сохранения в кэш - инкрементируем индекс
  */
 sample({
     clock: saveToIndexedDBFx.doneData,
     target: incrementProcessingIndex,
-});
-
-/**
- * После инкремента индекса - обрабатываем следующую метрику из очереди
- */
-sample({
-    clock: incrementProcessingIndex,
-    source: {
-        queue: $metricsQueue,
-        index: $processingIndex,
-        serverData: $serverData,
-        worker: $worker,
-    },
-    filter: ({ queue, index, serverData }) => {
-        const hasMore = index < queue.length;
-        const hasData = serverData !== null && serverData.length > 0;
-
-        if (!hasMore && queue.length > 0) {
-            console.log('Вся очередь обработана');
-        }
-
-        return hasMore && hasData;
-    },
-    fn: ({ queue, index, serverData, worker }) => ({
-        queue,
-        index,
-        serverData: serverData!,
-        worker,
-    }),
-    target: processNextMetricFx,
 });
 
 /**
