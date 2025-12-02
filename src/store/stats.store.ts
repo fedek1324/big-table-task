@@ -115,7 +115,7 @@ export const loadFromCacheFx = createEffect(async (metric: Metrics) => {
 });
 
 /**
- * Создаёт очередь метрик для вычисления
+ * Создаёт очередь метрик для вычисления и пересоздаёт worker если нужно
  * Проверяет кэш всех метрик и формирует очередь из тех, которых нет в кэше
  * Текущую метрику ставит первой в очереди
  */
@@ -132,8 +132,13 @@ export const createMetricsQueueFx = createEffect(async (currentMetric: Metrics) 
 
     if (metricsWithoutCache.length === 0) {
         console.log('Все метрики в актуальном кэше');
-        return [];
+        return { queue: [], worker: null };
     }
+
+    // Если очередь не пустая - пересоздаём worker
+    const currentWorker = $worker.getState();
+    currentWorker?.terminate();
+    const newWorker = createWorkerInstance();
 
     // Переставляем текущую метрику на первое место
     const currentIndex = metricsWithoutCache.indexOf(currentMetric);
@@ -143,7 +148,7 @@ export const createMetricsQueueFx = createEffect(async (currentMetric: Metrics) 
     }
 
     console.log('Создана очередь метрик:', metricsWithoutCache);
-    return metricsWithoutCache;
+    return { queue: metricsWithoutCache, worker: newWorker };
 });
 
 /**
@@ -168,17 +173,6 @@ export const processNextMetricFx = createEffect(
     },
 );
 
-/**
- * Прерывает текущий worker и создаёт новый
- */
-export const recreateWorkerFx = createEffect((metric: Metrics) => {
-    const currentWorker = $worker.getState();
-    currentWorker?.terminate();
-
-    const newWorker = createWorkerInstance();
-
-    return { worker: newWorker, metric };
-});
 
 // ========== Stores ==========
 
@@ -213,7 +207,7 @@ export const $rowData = createStore<MetricDataMap | null>(null)
  * Очередь метрик для вычисления
  * Содержит метрики, которые нужно обработать
  */
-export const $metricsQueue = createStore<Metrics[]>([]).on(createMetricsQueueFx.doneData, (_, queue) => queue);
+export const $metricsQueue = createStore<Metrics[]>([]).on(createMetricsQueueFx.doneData, (_, { queue }) => queue);
 
 /**
  * Индекс текущей обрабатываемой метрики в очереди
@@ -224,7 +218,7 @@ export const $processingIndex = createStore<number>(0)
     .on(incrementProcessingIndex, (index) => index + 1)
     .on(createMetricsQueueFx.doneData, () => 0);
 
-export const $worker = createStore<Worker | null>(handleDataWorker).on(recreateWorkerFx.doneData, (_, { worker }) => worker);
+export const $worker = createStore<Worker | null>(handleDataWorker).on(createMetricsQueueFx.doneData, (_, { worker }) => worker);
 
 /**
  * Флаг загрузки данных
@@ -247,7 +241,7 @@ sample({
 });
 
 /**
- * Если кэша нет - проверяем состояние очереди и пересоздаём worker если нужно
+ * Если кэша нет - проверяем состояние очереди и создаём очередь метрик (worker пересоздаётся внутри)
  */
 sample({
     clock: loadFromCacheFx.doneData,
@@ -275,15 +269,6 @@ sample({
         return shouldRecreate;
     },
     fn: ({ metric }) => metric!,
-    target: recreateWorkerFx,
-});
-
-/**
- * После пересоздания worker создаём новую очередь
- */
-sample({
-    clock: recreateWorkerFx.doneData,
-    fn: ({ metric }) => metric,
     target: createMetricsQueueFx,
 });
 
@@ -293,7 +278,7 @@ sample({
  */
 split({
     source: createMetricsQueueFx.doneData,
-    match: (queue: Metrics[]) => {
+    match: ({ queue }) => {
         if (queue.length === 0) return '__';
 
         const serverData = $serverData.getState();
@@ -312,7 +297,7 @@ split({
     },
     cases: {
         needServerData: loadServerDataFx,
-        hasServerData: processQueueWithExistingData,
+        hasServerData: processQueueWithExistingData.prepend((data: { queue: Metrics[]; worker: Worker | null }) => data.queue),
     },
 });
 
