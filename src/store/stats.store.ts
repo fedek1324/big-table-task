@@ -228,6 +228,15 @@ export const $processingIndex = createStore<number>(0)
 
 export const $worker = createStore<Worker>(handleDataWorker).on(recreateWorkerFx.doneData, (_, { worker }) => worker);
 
+/**
+ * Флаг загрузки данных
+ * true - если загружается кэш, загружаются данные с сервера или обрабатывается worker
+ */
+export const $isLoading = createStore<boolean>(false)
+    .on(setMetric, () => true)
+    .on(loadFromCacheFx.doneData, (_, cachedData) => (cachedData ? false : true))
+    .on(setRowData, () => false);
+
 // ========== Logic (Samples) ==========
 
 /**

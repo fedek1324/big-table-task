@@ -9,7 +9,7 @@ import { Levels } from '@/types/levels.types';
 import { MetricNodeData, MetricDataMap, getLevel } from '@/types/metric.types';
 import './stats-grid.scss';
 import { statsGridColumnsFactory } from './stats-grid.columns';
-import { $rowData, setMetric } from '@/store/stats.store';
+import { $rowData, $isLoading, setMetric } from '@/store/stats.store';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/contexts/theme-context';
 
@@ -26,6 +26,7 @@ export function StatsGrid() {
     const metricParam = searchParams.get('metric');
     const metric = metricParam && isMetric(metricParam) ? metricParam : Metrics.cost;
     const rowData = useUnit($rowData);
+    const isLoading = useUnit($isLoading);
     const { t, i18n } = useTranslation();
     const { theme } = useTheme();
 
@@ -120,6 +121,7 @@ export function StatsGrid() {
                 rowModelType='serverSide'
                 onGridReady={onGridReady}
                 treeData={true}
+                loading={isLoading}
                 isServerSideGroup={(dataItem: GridNode) => {
                     const hasChildren = dataItem.childIds && dataItem.childIds.length > 0;
                     return hasChildren;
