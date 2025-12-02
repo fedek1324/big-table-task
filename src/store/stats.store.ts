@@ -254,10 +254,10 @@ sample({
         // уже обрабатывается нужная метрика
         const queueEmpty = queue.length === 0;
         const queueInProgress = processingIndex < queue.length;
-        const currentMetric = queue[processingIndex];
-        const isCurrentMetric = queueInProgress && currentMetric === metric;
+        const currentMetricInProgress = queue[processingIndex];
+        const isCurrentMetricInProgress = queueInProgress && currentMetricInProgress === metric;
 
-        const shouldRecreate = queueEmpty || !isCurrentMetric;
+        const shouldRecreate = queueEmpty || !isCurrentMetricInProgress;
 
         if (shouldRecreate) {
             console.log(queueEmpty ? 'Инициализация очереди' : 'Пересоздание очереди для:', metric);
