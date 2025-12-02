@@ -38,11 +38,6 @@ function createWorkerInstance(): Worker {
     return worker;
 }
 
-/**
- * Инстанс worker-а
- */
-const handleDataWorker: Worker | null = null;
-
 // ========== Events ==========
 
 /**
@@ -207,7 +202,7 @@ export const $processingIndex = createStore<number>(0)
     .on(incrementProcessingIndex, (index) => index + 1)
     .on(createMetricsQueueFx.doneData, () => 0);
 
-export const $worker = createStore<Worker | null>(handleDataWorker).on(createMetricsQueueFx.doneData, (_, { worker }) => worker);
+export const $worker = createStore<Worker | null>(null).on(createMetricsQueueFx.doneData, (_, { worker }) => worker);
 
 /**
  * Флаг загрузки данных
