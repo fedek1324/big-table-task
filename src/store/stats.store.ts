@@ -148,7 +148,7 @@ export const createMetricsQueueFx = createEffect(
 );
 
 /**
- * Обрабатывает следующую метрику из очереди
+ * Обрабатывает следующую метрику из очереди и вызывает worker.postMessage
  */
 export const processNextMetricFx = createEffect(
     async ({ queue, index, serverData, worker }: { queue: Metrics[]; index: number; serverData: IStatItem[]; worker: Worker | null }) => {
@@ -237,7 +237,7 @@ sample({
 });
 
 /**
- * Если кэша нет - проверяем состояние очереди и создаём очередь метрик (worker пересоздаётся внутри)
+ * Если кэша нет - проверяем состояние очереди и создаём очередь метрик
  */
 sample({
     clock: loadFromCacheFx.doneData,
@@ -260,7 +260,7 @@ sample({
         const shouldRecreate = queueEmpty || !isCurrentMetric;
 
         if (shouldRecreate) {
-            console.log(queueEmpty ? 'Инициализация очереди' : 'Пересоздание очереди', 'для:', metric);
+            console.log(queueEmpty ? 'Инициализация очереди' : 'Пересоздание очереди для:', metric);
         }
 
         return shouldRecreate;
@@ -292,8 +292,7 @@ split({
 });
 
 /**
- * Обработка метрики после загрузки данных или если данные уже доступны
- * Объединяем оба случая в один sample с массивом clock
+ * Обработка метрики после загрузки данных с сервера или если данные уже были доступны
  */
 sample({
     clock: [loadServerDataFx.doneData, processQueueWithExistingData],
