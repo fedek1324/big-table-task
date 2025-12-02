@@ -275,9 +275,7 @@ sample({
  */
 split({
     source: createMetricsQueueFx.doneData,
-    match: ({ queue }) => {
-        if (queue.length === 0) return '__';
-
+    match: () => {
         const serverData = $serverData.getState();
         const noServerData = serverData === null || serverData.length === 0;
 
@@ -285,12 +283,7 @@ split({
             return 'needServerData';
         }
 
-        const index = $processingIndex.getState();
-        if (index < queue.length) {
-            return 'hasServerData';
-        }
-
-        return '__';
+        return 'hasServerData';
     },
     cases: {
         needServerData: loadServerDataFx,
@@ -326,23 +319,20 @@ sample({
 });
 
 /**
- * Обновляем $rowData если данные от воркера пришли для текущей метрики
+ * Обрабатываем данные от worker: всегда сохраняем в IndexedDB и обновляем rowData для текущей метрики
  */
+sample({
+    clock: workerMessageReceived,
+    fn: ({ metric, treeData }) => ({ metric, treeData }),
+    target: saveToIndexedDBFx,
+});
+
 sample({
     clock: workerMessageReceived,
     source: $metric,
     filter: (currentMetric, { metric }) => currentMetric === metric,
     fn: (_, { treeData }) => treeData,
     target: setRowData,
-});
-
-/**
- * Сохраняем данные в IndexedDB после получения от worker
- */
-sample({
-    clock: workerMessageReceived,
-    fn: ({ metric, treeData }) => ({ metric, treeData }),
-    target: saveToIndexedDBFx,
 });
 
 /**
