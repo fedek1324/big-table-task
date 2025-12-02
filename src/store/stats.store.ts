@@ -175,13 +175,7 @@ export const processNextMetricFx = createEffect(
  * Текущая метрика (cost, revenue, orders, returns, buyouts)
  * Изначально null, устанавливается из компонента
  */
-export const $metric = createStore<Metrics | null>(null).on(setMetric, (state, metric) => {
-    // Если метрика не изменилась, не обновляем стор
-    if (state === metric) {
-        return state;
-    }
-    return metric;
-});
+export const $metric = createStore<Metrics | null>(null).on(setMetric, (_, metric) => metric);
 
 /**
  * Данные с сервера (сырые данные из API)
