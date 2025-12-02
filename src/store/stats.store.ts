@@ -296,7 +296,7 @@ sample({
         const hasData = serverData !== null && serverData.length > 0;
         const canProcess = index < queue.length;
 
-        if (!canProcess && queue.length > 0) {
+        if (!canProcess) {
             console.log('Вся очередь обработана');
         }
 
