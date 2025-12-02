@@ -85,7 +85,7 @@ export const loadServerDataFx = createEffect(async () => {
 export const saveToIndexedDBFx = createEffect(async ({ metric, treeData }: { metric: Metrics; treeData: MetricDataMap }) => {
     await saveMetricData(indexedDB, metric, treeData, Date.now());
     console.log(`Метрика "${metric}" сохранена в кэш`);
-    return { metric, treeData };
+    return metric;
 });
 
 /**
@@ -328,7 +328,7 @@ sample({
 sample({
     clock: saveToIndexedDBFx.doneData,
     source: $metric,
-    filter: (currentMetric, { metric }) => currentMetric === metric,
+    filter: (currentMetric, savedMetric) => currentMetric === savedMetric,
     fn: (currentMetric) => currentMetric!,
     target: loadFromCacheFx,
 });
