@@ -245,9 +245,9 @@ export const $isLoading = createStore<boolean>(false)
 // ========== Logic (Samples) ==========
 
 /**
- * Обработчик решения о пересоздании очереди
+ * Результат проверки кэша - содержит метрику и флаг необходимости пересоздания
  */
-const handleRecreateDecision = createEvent<{ metric: Metrics; shouldRecreate: boolean }>();
+const checkCache = createEvent<{ metric: Metrics; shouldRecreate: boolean }>();
 
 /**
  * При изменении метрики - пытаемся загрузить данные из кеша
@@ -283,17 +283,18 @@ sample({
 
         return { metric: metric!, shouldRecreate };
     },
-    target: handleRecreateDecision,
+    target: checkCache,
 });
 
 /**
- * Если нужно пересоздать - пересоздаём worker и создаём очередь
+ * Разделяем логику: если нужно пересоздать worker - пересоздаём, иначе ничего не делаем
  */
-sample({
-    clock: handleRecreateDecision,
-    filter: ({ shouldRecreate }) => shouldRecreate,
-    fn: ({ metric }) => metric,
-    target: recreateWorkerFx,
+split({
+    source: checkCache,
+    match: ({ shouldRecreate }) => (shouldRecreate ? 'recreate' : '__'),
+    cases: {
+        recreate: recreateWorkerFx.prepend((data: { metric: Metrics; shouldRecreate: boolean }) => data.metric),
+    },
 });
 
 /**
