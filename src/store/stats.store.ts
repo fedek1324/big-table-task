@@ -41,7 +41,7 @@ function createWorkerInstance(): Worker {
 /**
  * Инстанс worker-а
  */
-const handleDataWorker = createWorkerInstance();
+const handleDataWorker: Worker | null = null;
 
 // ========== Events ==========
 
@@ -150,9 +150,14 @@ export const createMetricsQueueFx = createEffect(async (currentMetric: Metrics) 
  * Обрабатывает следующую метрику из очереди
  */
 export const processNextMetricFx = createEffect(
-    async ({ queue, index, serverData, worker }: { queue: Metrics[]; index: number; serverData: IStatItem[]; worker: Worker }) => {
+    async ({ queue, index, serverData, worker }: { queue: Metrics[]; index: number; serverData: IStatItem[]; worker: Worker | null }) => {
         if (index >= queue.length) {
             return null;
+        }
+
+        if (!worker) {
+            console.warn('Worker должен быть инициализирован');
+            return;
         }
 
         const metric = queue[index];
@@ -168,7 +173,7 @@ export const processNextMetricFx = createEffect(
  */
 export const recreateWorkerFx = createEffect((metric: Metrics) => {
     const currentWorker = $worker.getState();
-    currentWorker.terminate();
+    currentWorker?.terminate();
 
     const newWorker = createWorkerInstance();
 
@@ -219,7 +224,7 @@ export const $processingIndex = createStore<number>(0)
     .on(incrementProcessingIndex, (index) => index + 1)
     .on(createMetricsQueueFx.doneData, () => 0);
 
-export const $worker = createStore<Worker>(handleDataWorker).on(recreateWorkerFx.doneData, (_, { worker }) => worker);
+export const $worker = createStore<Worker | null>(handleDataWorker).on(recreateWorkerFx.doneData, (_, { worker }) => worker);
 
 /**
  * Флаг загрузки данных
@@ -254,6 +259,8 @@ sample({
     filter: ({ metric, queue, processingIndex }, cachedData) => {
         if (cachedData !== null || metric === null) return false;
 
+        // Если не получилось загрузить из кэша проверяем, вдруг сейчас
+        // уже обрабатывается нужная метрика
         const queueEmpty = queue.length === 0;
         const queueInProgress = processingIndex < queue.length;
         const currentMetric = queue[processingIndex];
