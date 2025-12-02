@@ -220,7 +220,9 @@ export const $rowData = createStore<MetricDataMap | null>(null)
  * Очередь метрик для вычисления
  * Содержит метрики, которые нужно обработать
  */
-export const $metricsQueue = createStore<Metrics[]>([]).on(setMetricsQueue, (_, queue) => queue);
+export const $metricsQueue = createStore<Metrics[]>([])
+    .on(setMetricsQueue, (_, queue) => queue)
+    .on(createMetricsQueueFx.doneData, (_, queue) => queue);
 
 /**
  * Индекс текущей обрабатываемой метрики в очереди
@@ -229,7 +231,8 @@ export const $metricsQueue = createStore<Metrics[]>([]).on(setMetricsQueue, (_, 
  */
 export const $processingIndex = createStore<number>(0)
     .on(setProcessingIndex, (_, index) => index)
-    .on(incrementProcessingIndex, (index) => index + 1);
+    .on(incrementProcessingIndex, (index) => index + 1)
+    .on(createMetricsQueueFx.doneData, () => 0);
 
 export const $worker = createStore<Worker>(handleDataWorker).on(recreateWorkerFx.doneData, (_, { worker }) => worker);
 
@@ -304,23 +307,6 @@ sample({
     clock: recreateWorkerFx.doneData,
     fn: ({ metric }) => metric,
     target: createMetricsQueueFx,
-});
-
-/**
- * Устанавливаем очередь в стор
- */
-sample({
-    clock: createMetricsQueueFx.doneData,
-    target: setMetricsQueue,
-});
-
-/**
- * Сбрасываем индекс при создании новой очереди
- */
-sample({
-    clock: createMetricsQueueFx.doneData,
-    fn: () => 0,
-    target: setProcessingIndex,
 });
 
 /**
