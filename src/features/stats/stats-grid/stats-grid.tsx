@@ -6,20 +6,16 @@ import { useSearchParams } from 'react-router-dom';
 import { useUnit } from 'effector-react';
 import { Metrics, isMetric } from '@/types/metrics.types';
 import { Levels } from '@/types/levels.types';
-import { TableNodeData, TableDataMap, getLevel, getNameFromNodeId } from '@/types/tableNode.types';
+import { TableDataMap, getLevel, getNameFromNodeId } from '@/types/tableNode.types';
 import './stats-grid.scss';
 import { statsGridColumnsFactory } from './stats-grid.columns';
 import { $rowData, $isLoading, setMetric } from '@/store/stats.store';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/contexts/theme-context';
-
-// Тип для узла с id для использования в grid
-interface GridNode extends TableNodeData {
-    id: string;
-}
+import { AgGridNode, toGridNode } from '@/types/agGridNode.types';
 
 export function StatsGrid() {
-    const [columnDefs, setColumnDefs] = useState<ColDef<GridNode>[]>([]);
+    const [columnDefs, setColumnDefs] = useState<ColDef<AgGridNode>[]>([]);
     const gridApiRef = useRef<GridApi | null>(null);
     const [searchParams] = useSearchParams();
     const metricParam = searchParams.get('metric');
@@ -60,15 +56,12 @@ export function StatsGrid() {
 
             // console.log('Запрошен уровень:', level, 'groupKeys:', groupKeys, 'startRow:', startRow, 'endRow:', endRow);
 
-            let allFilteredRows: GridNode[];
+            let allFilteredRows: AgGridNode[];
             if (level === 0) {
                 // Корневой уровень - возвращаем все узлы верхнего уровня (поставщики)
                 allFilteredRows = Object.entries(data)
                     .filter(([id]) => getLevel(id) === Levels.supplier)
-                    .map(([id, nodeData]) => ({
-                        ...nodeData,
-                        id,
-                    }));
+                    .map(([id, nodeData]) => toGridNode(id, nodeData));
             } else {
                 const parentId = groupKeys[groupKeys.length - 1];
                 const parentNode = data[parentId];
@@ -77,12 +70,9 @@ export function StatsGrid() {
                     .map((id) => {
                         const nodeData = data[id];
                         if (!nodeData) return null;
-                        return {
-                            ...nodeData,
-                            id,
-                        };
+                        return toGridNode(id, nodeData);
                     })
-                    .filter(Boolean) as GridNode[];
+                    .filter(Boolean) as AgGridNode[];
             }
 
             // Нарезаем данные согласно startRow и endRow для пагинации
@@ -119,17 +109,17 @@ export function StatsGrid() {
                 onGridReady={onGridReady}
                 treeData={true}
                 loading={isLoading}
-                isServerSideGroup={(dataItem: GridNode) => {
+                isServerSideGroup={(dataItem: AgGridNode) => {
                     const hasChildren = dataItem.childIds && dataItem.childIds.length > 0;
                     return hasChildren;
                 }}
-                getServerSideGroupKey={(dataItem: GridNode) => dataItem.id}
+                getServerSideGroupKey={(dataItem: AgGridNode) => dataItem.id}
                 autoGroupColumnDef={{
                     headerName: t('table.hierarchy'),
                     menuTabs: ['columnsMenuTab'],
                     pinned: 'left',
                     valueGetter: (params) => {
-                        const data = params.data as GridNode;
+                        const data = params.data as AgGridNode;
                         if (!data) return '';
 
                         return getNameFromNodeId(data.id);

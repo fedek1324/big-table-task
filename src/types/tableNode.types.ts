@@ -1,6 +1,6 @@
 import { Levels, ORDERED_LEVELS } from './levels.types';
 
-type TableNodeId = string;
+export type TableNodeId = string;
 
 // Данные узла дерева (без id)
 export interface TableNodeData {
