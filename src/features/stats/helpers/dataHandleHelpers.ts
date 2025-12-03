@@ -1,4 +1,4 @@
-import { IStatItem } from '@/types/stats.types';
+import { IStatItem, ORDERED_LEVELS } from '@/types/stats.types';
 import { TableDataMap, TableNodeData, createNodeId } from '@/types/tableNode.types';
 import { Metrics } from '@/types/metrics.types';
 
@@ -63,12 +63,12 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Tab
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Устанавливаем на начало дня
 
-    for (let i = 0; i < data.length; i++) {
-        const good = data[i];
-        const { supplier, brand, type, article, lastUpdate } = good;
+    for (let goodIndex = 0; goodIndex < data.length; goodIndex++) {
+        const good = data[goodIndex];
+        const { lastUpdate } = good;
 
         // Создаём id узла
-        const newGoodId = createNodeId({ supplier, brand, type, article });
+        const newGoodId = createNodeId(good);
 
         // 1) Получаем новый массив с данными метрики за последние 30 дней включая сегодня
         const lastUpdateDate = new Date(lastUpdate);
@@ -116,10 +116,8 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Tab
         const metricAverage = elementsToTake > 0 && metricSum !== undefined ? metricSum / elementsToTake : undefined;
 
         // 2) Мы должны получить плоскую структуру объектов с id и childIds[]
-        const idSplit = newGoodId.split(':');
-        let totalLevelId = '';
-        for (let i = 0; i < idSplit.length; i++) {
-            totalLevelId += (i > 0 ? ':' : '') + idSplit[i];
+        for (let level = 0; level < ORDERED_LEVELS.length; level++) {
+            const totalLevelId = createNodeId(good, level);
 
             const isNewNode = allMetricData[totalLevelId] === undefined;
 
@@ -140,7 +138,7 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Tab
 
                 allMetricData[newNodeId] = nodeData;
 
-                if (i === idSplit.length - 1) {
+                if (level === ORDERED_LEVELS.length - 1) {
                     // товар
                     nodeData.metricData = metricData;
 
@@ -156,22 +154,22 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Tab
                     }
                 } else {
                     // запоминаем id групп для агрегации
-                    if (levelIds[i] === undefined) {
-                        levelIds[i] = [];
+                    if (levelIds[level] === undefined) {
+                        levelIds[level] = [];
                     }
-                    levelIds[i].push(newNodeId);
+                    levelIds[level].push(newNodeId);
                 }
 
                 // Добавляем новый узел в childIds родителя
-                if (i > 0) {
-                    const parentId = totalLevelId.split(':').slice(0, -1).join(':');
+                if (level > 0) {
+                    const parentId = createNodeId(good, level - 1);
                     allMetricData[parentId].childIds.push(totalLevelId);
                 }
             }
         }
 
         // 3) Агрегируем данные вверх на 1 уровень в metricData
-        const goodParentId = newGoodId.split(':').slice(0, -1).join(':');
+        const goodParentId = createNodeId(good, ORDERED_LEVELS.length - 2);
         const parent = allMetricData[goodParentId];
 
         if (isNonAdditive) {
@@ -205,7 +203,7 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Tab
 
         // Освобождаем память: удаляем обработанный элемент
         // @ts-ignore - явно устанавливаем undefined для сборщика мусора
-        data[i] = undefined;
+        data[goodIndex] = undefined;
     }
 
     // 4) После того как прошли все товары, проводим полную агрегацию

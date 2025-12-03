@@ -26,8 +26,9 @@ export type TableNodeObjectId = {
 };
 
 // Создает ID узла по его компонентам
-export function createNodeId(id: TableNodeObjectId): TableNodeId {
-    return ORDERED_LEVELS.map((key) => id[key])
+export function createNodeId<T extends TableNodeObjectId>(idObject: T, level: number = ORDERED_LEVELS.length - 1): TableNodeId {
+    return ORDERED_LEVELS.slice(0, level + 1)
+        .map((key) => idObject[key])
         .filter((value): value is string => value !== undefined)
         .join(':');
 }
