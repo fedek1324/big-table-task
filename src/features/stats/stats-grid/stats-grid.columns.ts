@@ -1,29 +1,19 @@
 import { ColDef, ColDefField, ValueFormatterParams, ValueGetterParams } from 'ag-grid-enterprise';
-import { ORDERED_LEVELS, Levels } from '@/types/levels.types';
+import { ORDERED_LEVELS } from '@/types/levels.types';
 import { TableNodeData } from '@/types/tableNode.types';
 import { Metrics } from '@/types/metrics.types';
 import { TFunction } from 'i18next';
 
 // TODO maybe inherit statItem
 export function statsGridColumnsFactory<T extends TableNodeData>(dates: string[], metric: Metrics, t: TFunction) {
-    const metadataColumns: ColDef<T>[] = ORDERED_LEVELS.map((level, index) => {
-        const translationKey =
-            level === Levels.supplier
-                ? 'table.supplier'
-                : level === Levels.brand
-                  ? 'table.brand'
-                  : level === Levels.type
-                    ? 'table.type'
-                    : 'table.article';
-        return {
-            colId: level,
-            headerName: t(translationKey),
-            field: level as ColDefField<T>,
-            rowGroup: true,
-            rowGroupIndex: index,
-            initialHide: true,
-        };
-    });
+    const metadataColumns: ColDef<T>[] = ORDERED_LEVELS.map((level, index) => ({
+        colId: level,
+        headerName: t(`table.${level}`),
+        field: level as ColDefField<T>,
+        rowGroup: true,
+        rowGroupIndex: index,
+        initialHide: true,
+    }));
 
     const sumColumn: ColDef<T> = {
         colId: 'sums',
