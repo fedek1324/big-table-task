@@ -67,9 +67,6 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Tab
         const good = data[goodIndex];
         const { lastUpdate } = good;
 
-        // Создаём id узла
-        const newGoodId = createNodeId(good);
-
         // 1) Получаем новый массив с данными метрики за последние 30 дней включая сегодня
         const lastUpdateDate = new Date(lastUpdate);
         lastUpdateDate.setHours(0, 0, 0, 0);

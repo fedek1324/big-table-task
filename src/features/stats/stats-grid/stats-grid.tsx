@@ -5,7 +5,7 @@ import { AG_GRID_LOCALE_RU } from '@/i18n/AgGridRu';
 import { useSearchParams } from 'react-router-dom';
 import { useUnit } from 'effector-react';
 import { Metrics, isMetric } from '@/types/metrics.types';
-import { Levels } from '@/types/levels.types';
+import { ORDERED_LEVELS } from '@/types/levels.types';
 import { TableDataMap, getLevel, getNameFromNodeId } from '@/types/tableNode.types';
 import './stats-grid.scss';
 import { statsGridColumnsFactory } from './stats-grid.columns';
@@ -60,7 +60,7 @@ export function StatsGrid() {
             if (level === 0) {
                 // Корневой уровень - возвращаем все узлы верхнего уровня (поставщики)
                 allFilteredRows = Object.entries(data)
-                    .filter(([id]) => getLevel(id) === Levels.supplier)
+                    .filter(([id]) => getLevel(id) === ORDERED_LEVELS[0])
                     .map(([id, nodeData]) => toGridNode(id, nodeData));
             } else {
                 const parentId = groupKeys[groupKeys.length - 1];
