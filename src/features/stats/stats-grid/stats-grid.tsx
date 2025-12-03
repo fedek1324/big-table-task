@@ -6,7 +6,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useUnit } from 'effector-react';
 import { Metrics, isMetric } from '@/types/metrics.types';
 import { Levels } from '@/types/levels.types';
-import { MetricNodeData, MetricDataMap, getLevel } from '@/types/metric.types';
+import { TableNodeData, TableDataMap, getLevel } from '@/types/tableNode.types';
 import './stats-grid.scss';
 import { statsGridColumnsFactory } from './stats-grid.columns';
 import { $rowData, $isLoading, setMetric } from '@/store/stats.store';
@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/contexts/theme-context';
 
 // Тип для узла с id и level для использования в grid
-interface GridNode extends MetricNodeData {
+interface GridNode extends TableNodeData {
     id: string;
     level: Levels;
 }
@@ -47,7 +47,7 @@ export function StatsGrid() {
     }, [metric, t]);
 
     // Создаем datasource на основе текущих данных
-    const createDatasource = (data: MetricDataMap | null): IServerSideDatasource<any> => ({
+    const createDatasource = (data: TableDataMap | null): IServerSideDatasource<any> => ({
         getRows(params) {
             // console.log('Запрос getRows:', JSON.stringify(params.request, null, 1));
 

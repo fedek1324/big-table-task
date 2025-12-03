@@ -1,11 +1,11 @@
 import { ColDef, ColDefField, ValueFormatterParams, ValueGetterParams } from 'ag-grid-enterprise';
 import { ORDERED_LEVELS, Levels } from '@/types/levels.types';
-import { MetricNodeData } from '@/types/metric.types';
+import { TableNodeData } from '@/types/tableNode.types';
 import { Metrics } from '@/types/metrics.types';
 import { TFunction } from 'i18next';
 
 // TODO maybe inherit statItem
-export function statsGridColumnsFactory<T extends MetricNodeData>(dates: string[], metric: Metrics, t: TFunction) {
+export function statsGridColumnsFactory<T extends TableNodeData>(dates: string[], metric: Metrics, t: TFunction) {
     const metadataColumns: ColDef<T>[] = ORDERED_LEVELS.map((level, index) => {
         const translationKey =
             level === Levels.supplier

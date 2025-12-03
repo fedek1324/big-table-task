@@ -1,7 +1,7 @@
 import { createStore, createEvent, createEffect, sample } from 'effector';
 import { IStatItem } from '../types/stats.types';
 import { Metrics } from '../types/metrics.types';
-import { MetricDataMap } from '../types/metric.types';
+import { TableDataMap } from '../types/tableNode.types';
 import { STATS_API } from '../api/stats.api';
 import HandleDataWorker from '../features/stats/helpers/handleDataWorker?worker';
 import { initDB, saveMetricData, getMetricData, getMetricTimestamp } from './indexedDB';
@@ -49,14 +49,14 @@ export const setMetric = createEvent<Metrics>();
  * Событие получения данных от worker-а
  */
 export const workerMessageReceived = createEvent<{
-    treeData: MetricDataMap;
+    treeData: TableDataMap;
     metric: Metrics;
 }>();
 
 /**
  * Внутреннее событие для установки данных в $rowData
  */
-const setRowData = createEvent<MetricDataMap>();
+const setRowData = createEvent<TableDataMap>();
 
 /**
  * Событие для очистки данных сервера после завершения предзагрузки
@@ -77,7 +77,7 @@ export const loadServerDataFx = createEffect(async () => {
 /**
  * Сохраняет обработанные данные в IndexedDB
  */
-export const saveMetricDataToDbFx = createEffect(async ({ metric, treeData }: { metric: Metrics; treeData: MetricDataMap }) => {
+export const saveMetricDataToDbFx = createEffect(async ({ metric, treeData }: { metric: Metrics; treeData: TableDataMap }) => {
     await saveMetricData(indexedDB, metric, treeData, Date.now());
     console.log(`Метрика "${metric}" сохранена в кэш`);
     return metric;
@@ -173,7 +173,7 @@ export const $serverData = createStore<IStatItem[] | null>(null)
 /**
  * Обработанные данные для таблицы (результат работы worker-а или кеша)
  */
-export const $rowData = createStore<MetricDataMap | null>(null)
+export const $rowData = createStore<TableDataMap | null>(null)
     .on(setRowData, (_, treeData) => treeData)
     .on(loadFromCacheFx.doneData, (_, treeData) => (treeData ? treeData : null))
     .reset(setMetric);

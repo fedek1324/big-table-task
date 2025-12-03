@@ -1,9 +1,11 @@
 import { Levels, ORDERED_LEVELS } from './levels.types';
 
+type TableNodeId = string;
+
 // Данные узла дерева (без id)
-export interface MetricNodeData {
+export interface TableNodeData {
     // Массив ID дочерних узлов
-    childIds: string[];
+    childIds: TableNodeId[];
 
     // Данные по дням для выбранной метрики (агрегированные с детей)
     // Может содержать undefined для дней без данных
@@ -14,25 +16,27 @@ export interface MetricNodeData {
     average: number | undefined;
 }
 
+type FirstLevel = (typeof ORDERED_LEVELS)[0];
+type OtherLevels = Exclude<(typeof ORDERED_LEVELS)[number], FirstLevel>;
+
+export type TableNodeObjectId = {
+    [K in FirstLevel]: string;
+} & {
+    [K in OtherLevels]?: string;
+};
+
 // Создает ID узла по его компонентам
-export function createNodeId(supplier: string, brand?: string, type?: string, article?: string): string {
-    if (article) {
-        return `${supplier}:${brand}:${type}:${article}`;
-    }
-    if (type) {
-        return `${supplier}:${brand}:${type}`;
-    }
-    if (brand) {
-        return `${supplier}:${brand}`;
-    }
-    return supplier;
+export function createNodeId(id: TableNodeObjectId): TableNodeId {
+    return ORDERED_LEVELS.map((key) => id[key])
+        .filter((value): value is string => value !== undefined)
+        .join(':');
 }
 
 // Получает уровень узла из id по количеству двоеточий
 // 0 двоеточий = supplier, 1 = brand, 2 = type, 3 = article
-export function getLevel(id: string): Levels {
+export function getLevel(id: TableNodeId): Levels {
     const colonCount = (id.match(/:/g) || []).length;
     return ORDERED_LEVELS[colonCount];
 }
 
-export type MetricDataMap = Record<string, MetricNodeData>;
+export type TableDataMap = Record<TableNodeId, TableNodeData>;

@@ -21,7 +21,7 @@ class StatsApi {
     }
     private request(messageData: { action: string; size?: number }) {
         const requestId = this.getRequestId();
-        return new Promise<IStatItem[]>((resolve, reject) => {
+        return new Promise<IStatItem[]>((resolve, _reject) => {
             this.sendMessageToWorker({ ...messageData, requestId });
 
             setInterval(() => {

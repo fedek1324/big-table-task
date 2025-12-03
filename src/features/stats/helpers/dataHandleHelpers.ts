@@ -1,10 +1,10 @@
 import { IStatItem } from '@/types/stats.types';
-import { MetricDataMap, MetricNodeData, createNodeId } from '@/types/metric.types';
+import { TableDataMap, TableNodeData, createNodeId } from '@/types/tableNode.types';
 import { Metrics } from '@/types/metrics.types';
 
 // Расширенный тип для поддержки неаддитивных метрик (cost)
 // Для cost нужно хранить количество ячеек по дням для вычисления средних
-interface ExtendedMetricNodeData extends MetricNodeData {
+interface ExtendedMetricNodeData extends TableNodeData {
     // Количество непустых ячеек по каждому дню (для вычисления средних в неаддитивных метриках)
     cellCounts?: (number | undefined)[];
 }
@@ -51,7 +51,7 @@ const padArray = (arr: number[], elementsToTake: number): (number | undefined)[]
 /**
  * Главная функция обработки данных - объединяет все шаги
  */
-export function processData(data: IStatItem[], metric: Metrics): { treeData: MetricDataMap } {
+export function processData(data: IStatItem[], metric: Metrics): { treeData: TableDataMap } {
     // TODO мы в метрике сохраняем список товаров брендов и тд
     // а можно хранить только данные
     const allMetricData: ExtendedMetricDataMap = {};
@@ -68,7 +68,7 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Met
         const { supplier, brand, type, article, lastUpdate } = good;
 
         // Создаём id узла
-        const newGoodId = createNodeId(supplier, brand, type, article);
+        const newGoodId = createNodeId({ supplier, brand, type, article });
 
         // 1) Получаем новый массив с данными метрики за последние 30 дней включая сегодня
         const lastUpdateDate = new Date(lastUpdate);
@@ -80,7 +80,7 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Met
         // Хотим взять данные за последние 30 дней включительно
         const elementsToTake = Math.max(0, 30 - daysDiff);
 
-        let metricData: MetricNodeData['metricData'];
+        let metricData: TableNodeData['metricData'];
         if (metric === Metrics.buyouts) {
             // TODO optimize
             const orders = padArray(good.orders, elementsToTake);
@@ -111,7 +111,7 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Met
             metricData = [];
         }
 
-        // Вычисляем сумму и серднее по всей метрике
+        // Вычисляем сумму и среднее по всей метрике
         const metricSum = elementsToTake > 0 ? metricData.reduce<number>((acc, val) => acc + (val ?? 0), 0) : undefined;
         const metricAverage = elementsToTake > 0 && metricSum !== undefined ? metricSum / elementsToTake : undefined;
 
@@ -342,5 +342,5 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Met
         }
     }
 
-    return { treeData: allMetricData as MetricDataMap };
+    return { treeData: allMetricData as TableDataMap };
 }
