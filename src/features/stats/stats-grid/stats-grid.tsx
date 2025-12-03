@@ -6,17 +6,16 @@ import { useSearchParams } from 'react-router-dom';
 import { useUnit } from 'effector-react';
 import { Metrics, isMetric } from '@/types/metrics.types';
 import { Levels } from '@/types/levels.types';
-import { TableNodeData, TableDataMap, getLevel } from '@/types/tableNode.types';
+import { TableNodeData, TableDataMap, getLevel, getNameFromNodeId } from '@/types/tableNode.types';
 import './stats-grid.scss';
 import { statsGridColumnsFactory } from './stats-grid.columns';
 import { $rowData, $isLoading, setMetric } from '@/store/stats.store';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/contexts/theme-context';
 
-// Тип для узла с id и level для использования в grid
+// Тип для узла с id для использования в grid
 interface GridNode extends TableNodeData {
     id: string;
-    level: Levels;
 }
 
 export function StatsGrid() {
@@ -69,7 +68,6 @@ export function StatsGrid() {
                     .map(([id, nodeData]) => ({
                         ...nodeData,
                         id,
-                        level: getLevel(id),
                     }));
             } else {
                 const parentId = groupKeys[groupKeys.length - 1];
@@ -82,7 +80,6 @@ export function StatsGrid() {
                         return {
                             ...nodeData,
                             id,
-                            level: getLevel(id),
                         };
                     })
                     .filter(Boolean) as GridNode[];
@@ -135,20 +132,7 @@ export function StatsGrid() {
                         const data = params.data as GridNode;
                         if (!data) return '';
 
-                        // Извлекаем имя из id в зависимости от уровня
-                        const parts = data.id.split(':');
-                        switch (data.level) {
-                            case Levels.supplier:
-                                return parts[0]; // supplier
-                            case Levels.brand:
-                                return parts[1]; // brand
-                            case Levels.type:
-                                return parts[2]; // type
-                            case Levels.article:
-                                return parts[3]; // article
-                            default:
-                                return '';
-                        }
+                        return getNameFromNodeId(data.id);
                     },
                     cellRendererParams: {
                         suppressCount: true,

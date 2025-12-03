@@ -40,4 +40,18 @@ export function getLevel(id: TableNodeId): Levels {
     return ORDERED_LEVELS[colonCount];
 }
 
+// Извлекает название элемента из nodeId на указанном уровне
+// Например: getNameFromNodeId('supplier1:brand2:type3', Levels.brand) => 'brand2'
+export function getNameFromNodeId(id: TableNodeId, level?: Levels): string {
+    const targetLevel = level ?? getLevel(id);
+    const levelIndex = ORDERED_LEVELS.indexOf(targetLevel);
+
+    if (levelIndex === -1) {
+        return '';
+    }
+
+    const parts = id.split(':');
+    return parts[levelIndex] || '';
+}
+
 export type TableDataMap = Record<TableNodeId, TableNodeData>;
