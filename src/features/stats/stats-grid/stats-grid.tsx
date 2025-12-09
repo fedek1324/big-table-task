@@ -110,8 +110,7 @@ export function StatsGrid() {
                 treeData={true}
                 loading={isLoading}
                 isServerSideGroup={(dataItem: AgGridNode) => {
-                    const hasChildren = dataItem.childIds && dataItem.childIds.length > 0;
-                    return hasChildren;
+                    return (dataItem.childIds?.length ?? 0) > 0;
                 }}
                 getServerSideGroupKey={(dataItem: AgGridNode) => dataItem.id}
                 autoGroupColumnDef={{
