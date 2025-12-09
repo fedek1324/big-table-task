@@ -136,7 +136,7 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Tab
                 allMetricData[newNodeId] = nodeData;
 
                 if (level === ORDERED_LEVELS.length - 1) {
-                    // товар
+                    // товар (артикул)
                     nodeData.metricData = metricData;
 
                     if (isNonAdditive) {
@@ -213,6 +213,9 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Tab
                 const smallGroupId = groupIds[j];
                 const smallGroup = allMetricData[smallGroupId];
 
+                // Для самых маленьких групп totalArticlesCount = количество прямых детей (артикулов)
+                smallGroup.totalArticlesCount = smallGroup.childIds.length;
+
                 if (isNonAdditive) {
                     // Для неаддитивных метрик (cost): вычисляем средние по датам и общее среднее
                     let totalSum = 0;
@@ -258,6 +261,15 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Tab
 
                 // Инициализируем массив для агрегации
                 group.metricData = new Array(30).fill(undefined);
+                group.totalArticlesCount = 0;
+
+                // Агрегируем totalArticlesCount (не зависит от типа метрики)
+                for (let k = 0; k < childIds.length; k++) {
+                    const child = allMetricData[childIds[k]];
+                    if (child.totalArticlesCount) {
+                        group.totalArticlesCount += child.totalArticlesCount;
+                    }
+                }
 
                 if (isNonAdditive) {
                     // Для неаддитивных метрик: агрегируем суммы и количества ячеек от детей
@@ -301,11 +313,10 @@ export function processData(data: IStatItem[], metric: Metrics): { treeData: Tab
                     // Для аддитивных метрик: агрегируем данные от всех детей по дням
                     for (let k = 0; k < childIds.length; k++) {
                         const childId = childIds[k];
-                        const childData = allMetricData[childId].metricData;
+                        const child = allMetricData[childId];
 
-                        // Суммируем данные по каждому дню
                         for (let day = 0; day < 30; day++) {
-                            const childValue = childData[day];
+                            const childValue = child.metricData[day];
                             if (childValue !== undefined) {
                                 group.metricData[day] = (group.metricData[day] ?? 0) + childValue;
                             }

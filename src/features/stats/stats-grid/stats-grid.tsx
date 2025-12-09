@@ -126,6 +126,19 @@ export function StatsGrid() {
                     },
                     cellRendererParams: {
                         suppressCount: true,
+                        innerRenderer: (params: any) => {
+                            const data = params.data as AgGridNode;
+                            if (!data) return '';
+
+                            const name = getNameFromNodeId(data.id);
+                            const count = data.totalArticlesCount;
+
+                            // Показываем количество только для групп (не для артикулов)
+                            if (count !== undefined && count > 1) {
+                                return `${name} (${count})`;
+                            }
+                            return name;
+                        },
                     },
                 }}
                 theme={themeBalham.withParams({

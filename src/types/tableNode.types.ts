@@ -14,6 +14,9 @@ export interface TableNodeData {
     // Агрегированные данные для выбранной метрики
     sum: number | undefined;
     average: number | undefined;
+
+    // Общее количество артикулов в этом узле (включая все дочерние узлы)
+    totalArticlesCount?: number;
 }
 
 type FirstLevel = (typeof ORDERED_LEVELS)[0];
